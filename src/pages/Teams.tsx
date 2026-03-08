@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { TeamCard } from "@/components/TeamCard";
 import { Shield, Shuffle, Sparkles, Loader2, Users, Target, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/lib/api"; // <-- Importação do arquivo central de rotas
 
 export interface SquadAthlete {
   id: string;
@@ -53,7 +54,7 @@ const Teams = () => {
 
   const fetchTeams = async () => {
     try {
-      const response = await fetch("http://localhost:3000/TEAMS");
+      const response = await fetch(`${API_URL}/TEAMS`); // <-- Usando API_URL
       if (!response.ok) throw new Error("Erro ao buscar times");
       const data = await response.json();
       const formattedData = data.map((t: any) => ({ ...t, squad: t.squad || [] }));
@@ -97,7 +98,7 @@ const Teams = () => {
       const shuffledTeams = [...teamList].sort(() => Math.random() - 0.5);
 
       const updatePromises = playersWithoutTeam.map((player, index) => {
-        return fetch(`http://localhost:3000/TEAMS/${player.id}`, {
+        return fetch(`${API_URL}/TEAMS/${player.id}`, { // <-- Usando API_URL
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ team_player: shuffledTeams[index] }),
@@ -141,7 +142,7 @@ const Teams = () => {
       const newSquad = [...selectedTeam.squad, newAthlete];
       const newTeamOvr = Math.round(newSquad.reduce((acc, curr) => acc + curr.ovr, 0) / newSquad.length);
 
-      const response = await fetch(`http://localhost:3000/TEAMS/${selectedTeam.id}`, {
+      const response = await fetch(`${API_URL}/TEAMS/${selectedTeam.id}`, { // <-- Usando API_URL
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ squad: newSquad, ovr: newTeamOvr }),
@@ -168,7 +169,7 @@ const Teams = () => {
     const newTeamOvr = newSquad.length > 0 ? Math.round(newSquad.reduce((acc, curr) => acc + curr.ovr, 0) / newSquad.length) : 75;
 
     try {
-      await fetch(`http://localhost:3000/TEAMS/${teamId}`, {
+      await fetch(`${API_URL}/TEAMS/${teamId}`, { // <-- Usando API_URL
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ squad: newSquad, ovr: newTeamOvr }),
@@ -182,7 +183,7 @@ const Teams = () => {
   const handleClearTeam = async (teamId: number | string) => {
     if(!window.confirm("Deseja dispensar este clube? O técnico ficará 'Sem Time' e o elenco será apagado.")) return;
     try {
-      await fetch(`http://localhost:3000/TEAMS/${teamId}`, {
+      await fetch(`${API_URL}/TEAMS/${teamId}`, { // <-- Usando API_URL
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ team_player: "Sem Time", squad: [], ovr: 75 }),

@@ -5,6 +5,7 @@ import { TournamentBracket } from "@/components/TournamentBracket";
 import { Trophy, Shuffle, LayoutGrid, GitBranch, Settings, AlertTriangle, Loader2, Edit2, CheckCircle2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamData } from "./Teams";
+import { API_URL } from "@/lib/api";
 
 export interface GameData {
   match_id: number; team_house_id: number; team_out_id: number; goals_home: number;
@@ -33,7 +34,7 @@ const Championship = () => {
 
   const fetchData = async () => {
     try {
-      const [teamsRes, gamesRes] = await Promise.all([ fetch("http://localhost:3000/TEAMS"), fetch("http://localhost:3000/GAMES") ]);
+      const [teamsRes, gamesRes] = await Promise.all([ fetch(`${API_URL}/TEAMS`), fetch(`${API_URL}/GAMES`) ]);
       setTeams(await teamsRes.json());
       setGames(await gamesRes.json());
     } catch (error) {
@@ -50,7 +51,7 @@ const Championship = () => {
 
     setIsGenerating(true);
     try {
-      await fetch("http://localhost:3000/GAMES/RESET", { method: "DELETE" });
+      await fetch(`${API_URL}/GAMES/RESET`, { method: "DELETE" });
 
       let endpoint = "/GAMES/GERAR";
       let bodyData: any = { formato: formatType };
@@ -61,7 +62,7 @@ const Championship = () => {
         bodyData = { formato: formatType, numGrupos: numGroups };
       }
 
-      const response = await fetch(`http://localhost:3000${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData),
       });
 
@@ -87,7 +88,7 @@ const Championship = () => {
 
     setIsFinishing(true);
     try {
-      const response = await fetch("http://localhost:3000/COPAS/FINALIZAR", {
+      const response = await fetch(`${API_URL}/COPAS/FINALIZAR`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome_copa: cupName, campeao: championName })
       });

@@ -4,6 +4,7 @@ import { Radio, Gamepad2, Play, Plus, Minus, ChevronLeft, ChevronRight, Loader2,
 import { useToast } from "@/hooks/use-toast";
 import { TeamData } from "./Teams";
 import { GameData } from "./Championship";
+import { API_URL } from "@/lib/api";
 
 const LiveScore = () => {
   const [teams, setTeams] = useState<TeamData[]>([]);
@@ -20,8 +21,8 @@ const LiveScore = () => {
   const fetchData = async () => {
     try {
       const [teamsRes, gamesRes] = await Promise.all([
-        fetch("http://localhost:3000/TEAMS"),
-        fetch("http://localhost:3000/GAMES")
+        fetch(`${API_URL}/TEAMS`),
+        fetch(`${API_URL}/GAMES`)
       ]);
       const teamsData = await teamsRes.json();
       const gamesData = await gamesRes.json();
@@ -88,7 +89,7 @@ const LiveScore = () => {
     setIsProcessing(matchId);
     try {
       const finalScore = scores[matchId];
-      const response = await fetch(`http://localhost:3000/GAMES/${matchId}`, {
+      const response = await fetch(`${API_URL}/GAMES/${matchId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Trophy, Crown, Download, Upload, ChevronDown, ChevronUp, Medal, Loader2, Shield, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
+import { API_URL } from "@/lib/api";
 
 interface CupHistoryData {
   id: number;
@@ -23,7 +24,7 @@ const Cups = () => {
 
   const fetchCups = async () => {
     try {
-      const response = await fetch("http://localhost:3000/COPAS");
+      const response = await fetch(`${API_URL}/COPAS`);
       if (!response.ok) throw new Error("Erro");
       const data = await response.json();
       setCups(data.reverse());
@@ -52,7 +53,7 @@ const Cups = () => {
 
     setIsUploading(true);
     try {
-      const response = await fetch("http://localhost:3000/COPAS/IMPORTAR", { method: "POST", body: formData });
+      const response = await fetch(`${API_URL}/COPAS/IMPORTAR`, { method: "POST", body: formData });
       if (!response.ok) throw new Error("Erro na importação");
       toast({ title: "Sucesso!", description: "Histórico importado com sucesso." });
       fetchCups();
@@ -65,7 +66,7 @@ const Cups = () => {
   };
 
   const handleExportGlobal = () => {
-    window.open("http://localhost:3000/COPAS/EXPORTAR", "_blank");
+    window.open(`${API_URL}/COPAS/EXPORTAR`, "_blank");
     toast({ title: "Download Iniciado", description: "Sua planilha geral está sendo baixada." });
   };
 
@@ -73,7 +74,7 @@ const Cups = () => {
   const handleDeleteCup = async (id: number, nome: string) => {
     if (!window.confirm(`Tem certeza que deseja APAGAR a ${nome} do histórico? Isso não pode ser desfeito.`)) return;
     try {
-      await fetch(`http://localhost:3000/COPAS/${id}`, { method: "DELETE" });
+      await fetch(`${API_URL}/COPAS/${id}`, { method: "DELETE" });
       toast({ title: "Excluída", description: "Copa removida do histórico." });
       fetchCups();
     } catch (error) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Trophy, Target, Swords, Loader2, Edit, Trash2 } from "lucide-react";
 import { ApiPlayer } from "@/pages/Players";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/lib/api"; // <-- Importação corrigida com o caminho exato!
 
 interface PlayerModalProps {
   player: ApiPlayer;
@@ -36,7 +37,7 @@ export function PlayerModal({ player, onClose, onRefresh }: PlayerModalProps) {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await fetch("http://localhost:3000/COPAS");
+        const response = await fetch(`${API_URL}/COPAS`);
         if (!response.ok) return;
         
         const copas = await response.json();
@@ -68,7 +69,7 @@ export function PlayerModal({ player, onClose, onRefresh }: PlayerModalProps) {
     if (!window.confirm("Tem certeza que deseja excluir este jogador? Isso não pode ser desfeito.")) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/TEAMS/${player.id}`, { method: "DELETE" });
+      const response = await fetch(`${API_URL}/TEAMS/${player.id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Erro ao excluir");
 
       toast({ title: "Excluído", description: "Jogador removido com sucesso." });
@@ -82,7 +83,7 @@ export function PlayerModal({ player, onClose, onRefresh }: PlayerModalProps) {
   const handleUpdate = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`http://localhost:3000/TEAMS/${player.id}`, {
+      const response = await fetch(`${API_URL}/TEAMS/${player.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),

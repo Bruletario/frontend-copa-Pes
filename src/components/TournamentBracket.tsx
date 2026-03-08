@@ -3,6 +3,7 @@ import { GameData } from "@/pages/Championship";
 import { TeamData } from "@/pages/Teams";
 import { Loader2, GitBranch, Shield, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/lib/api"; // <-- Importação corrigida com o caminho exato!
 
 interface TournamentBracketProps {
   games: GameData[];
@@ -22,7 +23,7 @@ export function TournamentBracket({ games, teams, onRefresh }: TournamentBracket
     if (!window.confirm("Gerar chaveamento com base na classificação ATUAL?")) return;
     setIsGenerating(true);
     try {
-      const response = await fetch("http://localhost:3000/GAMES/MATA-MATA", {
+      const response = await fetch(`${API_URL}/GAMES/MATA-MATA`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ formato: knockoutFormat })
       });
       if (!response.ok) throw new Error("Erro");

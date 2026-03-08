@@ -3,6 +3,7 @@ import { GameData } from "@/pages/Championship";
 import { TeamData } from "@/pages/Teams";
 import { Shield, ChevronDown, Trophy, Loader2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/lib/api"; // <-- Importação corrigida com o caminho exato!
 
 interface MatchInputProps {
   games: GameData[];
@@ -40,7 +41,7 @@ export function MatchInput({ games, teams, onRefresh }: MatchInputProps) {
 
     setSavingId(matchId);
     try {
-      await fetch(`http://localhost:3000/GAMES/${matchId}`, {
+      await fetch(`${API_URL}/GAMES/${matchId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ goals_home: Number(s1), goals_out: Number(s2), status_game: "Finalizado" }),

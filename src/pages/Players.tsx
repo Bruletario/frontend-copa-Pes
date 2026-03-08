@@ -3,6 +3,7 @@ import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerModal } from "@/components/PlayerModal";
 import { Plus, Users, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/lib/api"; // <-- Importação adicionada
 
 export interface ApiPlayer {
   id: number | string;
@@ -38,7 +39,7 @@ const Players = () => {
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetch("http://localhost:3000/TEAMS");
+      const response = await fetch(`${API_URL}/TEAMS`); // <-- Substituído aqui
       if (!response.ok) throw new Error("Erro ao buscar jogadores");
       const data = await response.json();
       setPlayers(data);
@@ -65,7 +66,7 @@ const Players = () => {
     const finalTeam = team.trim() === "" ? "Sem Time" : team;
 
     try {
-      const response = await fetch("http://localhost:3000/TEAMS", {
+      const response = await fetch(`${API_URL}/TEAMS`, { // <-- Substituído aqui
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

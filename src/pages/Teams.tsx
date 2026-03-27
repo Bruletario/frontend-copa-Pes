@@ -2,7 +2,19 @@ import { useState, useEffect } from "react";
 import { TeamCard } from "@/components/TeamCard";
 import { Shield, Shuffle, Sparkles, Loader2, Users, Target, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { API_URL } from "@/lib/api"; // <-- Importação do arquivo central de rotas
+import { API_URL } from "@/lib/api";
+
+// 👇 IMPORTAÇÕES DO ALERT DIALOG ADICIONADAS AQUI
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface SquadAthlete {
   id: string;
@@ -19,7 +31,6 @@ export interface TeamData {
   ovr: number;
   formation: string;
   squad: SquadAthlete[];
-  // 👇 Estas são as propriedades que o TypeScript estava sentindo falta:
   points: number;
   goals_score: number;
   goals_conceded: number;
@@ -34,27 +45,27 @@ const Teams = () => {
   const [teams, setTeams] = useState<TeamData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Painéis expansíveis
   const [showDrawPanel, setShowDrawPanel] = useState(false);
   const [showDraftPanel, setShowDraftPanel] = useState(false);
   
-  // Estados do Sorteio de TIMES
   const [isDrawingTeams, setIsDrawingTeams] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [teamList, setTeamList] = useState<string[]>([]);
 
-  // Estados do Draft de ATLETAS
   const [isDrafting, setIsDrafting] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftPos, setDraftPos] = useState("CA");
   const [draftOvr, setDraftOvr] = useState<number | string>(80);
   const [draftDestination, setDraftDestination] = useState<string>("RANDOM");
 
+  // 👇 ESTADO NOVO PARA CONTROLAR O MODAL DE DISPENSAR CLUBE
+  const [teamToClear, setTeamToClear] = useState<number | string | null>(null);
+
   const { toast } = useToast();
 
   const fetchTeams = async () => {
     try {
-      const response = await fetch(`${API_URL}/TEAMS`); // <-- Usando API_URL
+      const response = await fetch(`${API_URL}/TEAMS`);
       if (!response.ok) throw new Error("Erro ao buscar times");
       const data = await response.json();
       const formattedData = data.map((t: any) => ({ ...t, squad: t.squad || [] }));
@@ -96,9 +107,8 @@ const Teams = () => {
     setIsDrawingTeams(true);
     try {
       const shuffledTeams = [...teamList].sort(() => Math.random() - 0.5);
-
       const updatePromises = playersWithoutTeam.map((player, index) => {
-        return fetch(`${API_URL}/TEAMS/${player.id}`, { // <-- Usando API_URL
+        return fetch(`${API_URL}/TEAMS/${player.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ team_player: shuffledTeams[index] }),
@@ -106,7 +116,6 @@ const Teams = () => {
       });
 
       await Promise.all(updatePromises);
-
       toast({ title: "Sorteio Realizado!", description: "Os clubes foram definidos para os técnicos." });
       setTeamList([]);
       setShowDrawPanel(false);
@@ -118,6 +127,7 @@ const Teams = () => {
     }
   };
 
+  // 👇 FUNÇÃO OTIMIZADA: Apenas envia o pacote para a nova rota REST do Back-end.
   const handleDraftAthlete = async () => {
     if (!draftName.trim() || !draftOvr || teams.length === 0) {
       toast({ title: "Atenção", description: "Preencha o atleta ou garanta que existam times.", variant: "destructive" });
@@ -125,33 +135,27 @@ const Teams = () => {
     }
 
     setIsDrafting(true);
-
     try {
-      let selectedTeam: TeamData;
-
-      if (draftDestination === "RANDOM") {
-        const availableTeams = teams.filter(t => t.team_player !== "Sem Time");
-        if (availableTeams.length === 0) throw new Error("Não há times válidos para sortear.");
-        const randomTeamIndex = Math.floor(Math.random() * availableTeams.length);
-        selectedTeam = availableTeams[randomTeamIndex];
-      } else {
-        selectedTeam = teams.find(t => t.id.toString() === draftDestination)!;
-      }
-
-      const newAthlete: SquadAthlete = { id: Date.now().toString(), name: draftName, position: draftPos, ovr: Number(draftOvr) };
-      const newSquad = [...selectedTeam.squad, newAthlete];
-      const newTeamOvr = Math.round(newSquad.reduce((acc, curr) => acc + curr.ovr, 0) / newSquad.length);
-
-      const response = await fetch(`${API_URL}/TEAMS/${selectedTeam.id}`, { // <-- Usando API_URL
-        method: "PUT",
+      const response = await fetch(`${API_URL}/TEAMS/DRAFT`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ squad: newSquad, ovr: newTeamOvr }),
+        body: JSON.stringify({
+          name: draftName,
+          position: draftPos,
+          ovr: Number(draftOvr),
+          destination: draftDestination
+        }),
       });
 
       if (!response.ok) throw new Error("Erro ao salvar atleta");
 
-      toast({ title: draftDestination === "RANDOM" ? "Sorteado! 🎰" : "Contratado! ✍️", description: `${newAthlete.name} foi para o time de ${selectedTeam.name_player}.` });
+      const respostaJson = await response.json();
 
+      toast({ 
+        title: draftDestination === "RANDOM" ? "Sorteado! 🎰" : "Contratado! ✍️", 
+        description: `${respostaJson.atleta.name} foi para o time de ${respostaJson.time.name_player}.` 
+      });
+      
       setDraftName("");
       fetchTeams();
     } catch (error) {
@@ -164,12 +168,11 @@ const Teams = () => {
   const handleRemoveAthlete = async (teamId: number | string, athleteId: string) => {
     const team = teams.find(t => t.id === teamId);
     if (!team) return;
-
     const newSquad = team.squad.filter(a => a.id !== athleteId);
     const newTeamOvr = newSquad.length > 0 ? Math.round(newSquad.reduce((acc, curr) => acc + curr.ovr, 0) / newSquad.length) : 75;
 
     try {
-      await fetch(`${API_URL}/TEAMS/${teamId}`, { // <-- Usando API_URL
+      await fetch(`${API_URL}/TEAMS/${teamId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ squad: newSquad, ovr: newTeamOvr }),
@@ -180,17 +183,26 @@ const Teams = () => {
     }
   };
 
-  const handleClearTeam = async (teamId: number | string) => {
-    if(!window.confirm("Deseja dispensar este clube? O técnico ficará 'Sem Time' e o elenco será apagado.")) return;
+  // 👇 FUNÇÃO MODIFICADA: Agora ela só define quem será excluído e chama o Modal
+  const handleClearTeam = (teamId: number | string) => {
+    setTeamToClear(teamId);
+  };
+
+  // 👇 FUNÇÃO NOVA: Executa a ação de fato após clicar em "Sim" no modal
+  const confirmClearTeam = async () => {
+    if (!teamToClear) return;
     try {
-      await fetch(`${API_URL}/TEAMS/${teamId}`, { // <-- Usando API_URL
+      await fetch(`${API_URL}/TEAMS/${teamToClear}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ team_player: "Sem Time", squad: [], ovr: 75 }),
       });
+      toast({ title: "Sucesso", description: "Clube dispensado com sucesso." });
       fetchTeams();
     } catch (error) {
       toast({ title: "Erro", description: "Falha ao dispensar clube.", variant: "destructive" });
+    } finally {
+      setTeamToClear(null);
     }
   };
 
@@ -307,6 +319,29 @@ const Teams = () => {
           ))}
         </div>
       )}
+
+      {/* 👇 MODAL INVISÍVEL NO FINAL DO COMPONENTE (Abre quando teamToClear tiver algum dado) */}
+      <AlertDialog open={!!teamToClear} onOpenChange={(open) => !open && setTeamToClear(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Dispensar Clube?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja dispensar este clube? O técnico ficará 'Sem Time' e todo o elenco atual que ele comprou no draft será apagado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {/* Botão Vermelho para Não */}
+            <AlertDialogCancel className="bg-red-600 text-white hover:bg-red-700 hover:text-white border-0">
+              Não, cancelar
+            </AlertDialogCancel>
+            {/* Botão Branco para Sim */}
+            <AlertDialogAction onClick={confirmClearTeam} className="bg-white text-black hover:bg-gray-200">
+              Sim, dispensar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };

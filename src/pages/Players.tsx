@@ -3,7 +3,7 @@ import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerModal } from "@/components/PlayerModal";
 import { Plus, Users, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { API_URL } from "@/lib/api"; // <-- Importação adicionada
+import { API_URL } from "@/lib/api";
 
 export interface ApiPlayer {
   id: number | string;
@@ -19,6 +19,17 @@ export interface ApiPlayer {
   wins: number;
   draws: number;
   losses: number;
+  // Propriedades das medalhas adicionadas do Histórico Geral
+  ouro: number;
+  prata: number;
+  bronze: number;
+  // Propriedades do Histórico da vida toda
+  all_time_matches: number;
+  all_time_goals: number;
+  all_time_goals_conceded: number;
+  all_time_wins: number;
+  all_time_draws: number;
+  all_time_losses: number;
 }
 
 const Players = () => {
@@ -30,7 +41,7 @@ const Players = () => {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
-  const [color, setColor] = useState("#39FF14");
+  const [color, setColor] = useState("#FFFFFF"); // <- Cor padrão branca neon
   const [ovr, setOvr] = useState<number | string>(75);
   const [formation, setFormation] = useState("4-4-2");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +50,8 @@ const Players = () => {
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetch(`${API_URL}/TEAMS`); // <-- Substituído aqui
+      // Puxando da rota que traz as medalhas da vida toda (já filtrando inativos)
+      const response = await fetch(`${API_URL}/PLAYERS/ALL-TIME`);
       if (!response.ok) throw new Error("Erro ao buscar jogadores");
       const data = await response.json();
       setPlayers(data);
@@ -66,7 +78,7 @@ const Players = () => {
     const finalTeam = team.trim() === "" ? "Sem Time" : team;
 
     try {
-      const response = await fetch(`${API_URL}/TEAMS`, { // <-- Substituído aqui
+      const response = await fetch(`${API_URL}/TEAMS`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -75,31 +87,33 @@ const Players = () => {
           color: color,
           ovr: Number(ovr),
           formation: formation,
-          squad: [] // Garante compatibilidade com a Tela 2
+          squad: []
         }),
       });
 
-      if (!response.ok) throw new Error("Erro ao cadastrar");
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.erro || "Erro ao cadastrar");
+      }
 
       toast({ title: "Sucesso!", description: "Jogador cadastrado com sucesso." });
 
       // Limpa formulário e recarrega a lista
       setName("");
       setTeam("");
-      setColor("#39FF14");
+      setColor("#FFFFFF");
       setOvr(75);
       setFormation("4-4-2");
       setShowForm(false);
       fetchPlayers();
 
-    } catch (error) {
-      toast({ title: "Erro", description: "Falha ao registrar o jogador.", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "Atenção", description: error.message || "Falha ao registrar o jogador.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // CSS moderno reutilizável para inputs
   const inputModernCSS = "w-full bg-background/50 border border-border/50 rounded-lg px-4 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all placeholder:text-muted-foreground/50";
 
   return (
@@ -136,7 +150,7 @@ const Players = () => {
             </div>
             <div>
               <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-1 font-medium">Cor do Perfil</label>
-              <div className="flex items-center gap-3 h-[38px] px-2 bg-background/50 border border-border/50 rounded-lg">
+              <div className="flex items-center gap-3 h-[38px] px-2 bg-background border border-border/50 rounded-lg">
                 <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
                 <span className="text-sm text-muted-foreground font-mono">{color}</span>
               </div>
@@ -178,7 +192,7 @@ const Players = () => {
         </div>
       ) : players.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
-          Nenhum jogador cadastrado. Adicione o primeiro!
+          Nenhum jogador ativo no momento.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

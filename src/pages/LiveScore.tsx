@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom"; 
 import { StandingsTable } from "@/components/StandingsTable";
-import { Radio, Play, Plus, Minus, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Tv, Shield } from "lucide-react";
+import { Radio, Play, Plus, Minus, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Tv, Shield, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamData } from "./Teams";
 import { GameData } from "./Championship";
@@ -24,11 +25,11 @@ const LiveScore = () => {
   const [liveMatchIds, setLiveMatchIds] = useState<Set<number>>(new Set());
   const [scores, setScores] = useState<Record<number, { s1: number; s2: number }>>({});
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
-  const [isAutoConsolidating, setIsAutoConsolidating] = useState(false);
   
   const [penaltyPrompt, setPenaltyPrompt] = useState<{match: GameData, s1: number, s2: number} | null>(null);
 
   const [config, setConfig] = useState<any>({});
+  const [isAutoConsolidating, setIsAutoConsolidating] = useState(false);
 
   const { toast } = useToast();
 
@@ -43,7 +44,7 @@ const LiveScore = () => {
       setGames(await gamesRes.json());
       if(configRes.ok) setConfig(await configRes.json());
     } catch (error) {
-      toast({ title: "Erro", description: "Não foi possível carregar os jogos.", variant: "destructive" });
+      toast({ title: "Erro", description: "Nao foi possivel carregar os jogos.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -64,10 +65,10 @@ const LiveScore = () => {
   const handlePrevRound = () => { if (currentIndex > 0) setCurrentRound(rounds[currentIndex - 1]); };
   const handleNextRound = () => { if (currentIndex < rounds.length - 1) setCurrentRound(rounds[currentIndex + 1]); };
 
-  const isHomeAway = config.knockoutFormat === "homeaway";
   const knockoutGames = games.filter(g => g.round >= 90);
+  const hasKnockout = knockoutGames.length > 0;
+  const isHomeAway = knockoutGames.some(g => g.is_return_match);
 
-  // 👇 TÍTULOS INTELIGENTES BASEADOS NA DISTÂNCIA PARA A FINAL 👇
   const getRoundTitle = (round: number, isHomeAway: boolean) => {
     if (round < 90) return `Rodada ${round}`;
     if (round === 99) return "3º Lugar (Bronze)";
@@ -93,7 +94,7 @@ const LiveScore = () => {
         if (dist === 2) return "Quartas de Final";
         if (dist === 3) return "Oitavas de Final";
     }
-    return `Eliminatórias`;
+    return `Eliminatorias`;
   };
 
   const roundMatches = games.filter((m) => m.round === currentRound);
@@ -120,24 +121,19 @@ const LiveScore = () => {
     const s1 = scores[matchId].s1;
     const s2 = scores[matchId].s2;
 
-    // 👇 BLINDAGEM: PÊNALTIS SÓ NA VOLTA OU MATA-MATA SIMPLES 👇
     let needsPenalties = false;
     const isKnockoutMatch = match.round >= 90 && match.round < 99;
     
     if (isKnockoutMatch && !advancingTeamId) {
-        if (!isHomeAway) {
-            needsPenalties = s1 === s2;
-        } else {
-            // Identifica se é o jogo de Volta
-            const isVoltaRound = match.round % 2 !== 0; 
-            if (isVoltaRound) {
-                const idaGame = games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id && g.team_out_id === match.team_house_id);
-                if (idaGame) {
-                    const agg1 = s1 + (idaGame.goals_out || 0);
-                    const agg2 = s2 + (idaGame.goals_home || 0);
-                    needsPenalties = agg1 === agg2;
-                }
+        if (match.is_return_match) {
+            const idaGame = games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id);
+            if (idaGame) {
+                const agg1 = s1 + (idaGame.goals_out || 0);
+                const agg2 = s2 + (idaGame.goals_home || 0);
+                needsPenalties = agg1 === agg2;
             }
+        } else if (!isHomeAway) {
+            needsPenalties = s1 === s2;
         }
     } else if (match.round === 99 && s1 === s2 && !advancingTeamId) {
         needsPenalties = true;
@@ -158,33 +154,78 @@ const LiveScore = () => {
 
       setLiveMatchIds((prev) => { const next = new Set(prev); next.delete(matchId); return next; });
       setPenaltyPrompt(null);
-      toast({ title: "Apito Final!", description: advancingTeamId ? "Vencedor nos pênaltis definido!" : "Partida encerrada." });
+      toast({ title: "Apito Final!", description: advancingTeamId ? "Vencedor nos penaltis definido!" : "Partida encerrada." });
       fetchData(); 
     } catch (error) {
-      toast({ title: "Erro", description: "Não foi possível finalizar o jogo.", variant: "destructive" });
+      toast({ title: "Erro", description: "Nao foi possivel finalizar o jogo.", variant: "destructive" });
     } finally {
       setIsProcessing(null);
     }
   };
 
+  const isTournamentRunning = games.length > 0;
   const leagueGames = games.filter(g => g.round < 90);
   const hasLeague = leagueGames.length > 0;
   const isLeagueFinished = hasLeague && leagueGames.every(g => g.status_game === "Finalizado");
 
+  const mainBracketGames = knockoutGames.filter(g => g.round < 99);
+  const maxKnockoutRound = mainBracketGames.length > 0 ? Math.max(...mainBracketGames.map(g => g.round)) : 0;
+  const finalMatch = mainBracketGames.find(g => g.round === maxKnockoutRound);
+  const isKnockoutFinished = finalMatch ? finalMatch.status_game === "Finalizado" : false;
+
+  let isFullyFinished = false;
+  if (isTournamentRunning) {
+      if (hasLeague && !hasKnockout) {
+          if (config.type === 'LEAGUE') isFullyFinished = isLeagueFinished;
+      } else if (!hasLeague && hasKnockout) {
+          isFullyFinished = isKnockoutFinished;
+      } else if (hasLeague && hasKnockout) {
+          isFullyFinished = isLeagueFinished && isKnockoutFinished;
+      }
+  }
+
+  const activeTeams = teams.filter(t => t.team_player !== "Sem Time");
+  const sortedTeams = [...activeTeams].sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      return (b.goals_score - b.goals_conceded) - (a.goals_score - a.goals_conceded);
+  });
+
+  let podium = { first: sortedTeams[0], second: sortedTeams[1], third: sortedTeams[2] };
+  
+  if (isFullyFinished && hasKnockout && finalMatch) {
+      let homeWon = false;
+      
+      if (finalMatch.is_return_match) {
+          const idaGame = knockoutGames.find(g => g.round === finalMatch.round - 1 && g.team_house_id === finalMatch.team_out_id);
+          if (idaGame) {
+              const aggHome = finalMatch.goals_home + (idaGame.goals_out || 0);
+              const aggOut = finalMatch.goals_out + (idaGame.goals_home || 0);
+              const isTie = aggHome === aggOut;
+              homeWon = aggHome > aggOut || (isTie && finalMatch.penalty_winner_id === finalMatch.team_house_id);
+          }
+      } else {
+          const isTie = finalMatch.goals_home === finalMatch.goals_out;
+          homeWon = finalMatch.goals_home > finalMatch.goals_out || (isTie && finalMatch.penalty_winner_id === finalMatch.team_house_id);
+      }
+      const winnerId = homeWon ? finalMatch.team_house_id : finalMatch.team_out_id;
+      
+      podium.first = teams.find(t => t.id === winnerId) || sortedTeams[0];
+  }
+
+  // AUTO-GERACAO DO MATA-MATA
   useEffect(() => {
     const autoGenerateKnockout = async () => {
       if (isLeagueFinished && config.type !== 'LEAGUE' && knockoutGames.length === 0 && !isAutoConsolidating) {
         setIsAutoConsolidating(true);
-        toast({ title: "Fase Base Concluída!", description: "A gerar a árvore de Mata-Mata..." });
+        toast({ title: "Fase Inicial Concluida!", description: "Sorteando chaveamento do Mata-Mata..." });
         try {
           await fetch(`${API_URL}/GAMES/MATA-MATA`, { 
             method: "POST", headers: { "Content-Type": "application/json" }, 
             body: JSON.stringify({ formato: config.knockoutFormat, size: config.knockoutTeams, logic: config.seedingLogic, hasThirdPlace: config.hasThirdPlace }) 
           });
-          await fetchData();
-          setCurrentRound(90); 
+          fetchData();
         } catch (error) {
-          toast({ title: "Erro", description: "Falha ao gerar.", variant: "destructive" });
+          console.error(error);
         } finally {
           setIsAutoConsolidating(false);
         }
@@ -219,17 +260,29 @@ const LiveScore = () => {
           </div>
         </div>
 
+        {isFullyFinished && podium.first && (
+          <div className="mb-6 card-elevated border-neon-yellow/50 bg-neon-yellow/5 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in shadow-[0_0_15px_rgba(250,204,21,0.05)]">
+            <div className="flex items-center gap-4">
+              <Trophy className="h-10 w-10 text-neon-yellow drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Torneio Concluido</p>
+                <p className="font-display text-base text-foreground">O campeao e <span className="font-bold text-neon-yellow drop-shadow-sm">{podium.first.name_player}</span>.</p>
+              </div>
+            </div>
+            <Link to="/campeonato" className="w-full sm:w-auto px-6 py-2.5 bg-neon-yellow text-black border-0 rounded-lg text-sm font-bold hover:bg-yellow-400 transition-all shadow-[0_0_15px_rgba(250,204,21,0.4)] flex items-center justify-center gap-2">
+              <Trophy className="h-4 w-4"/> Ir para o Podio Oficial
+            </Link>
+          </div>
+        )}
+
         <div className="space-y-4 w-full">
           {roundMatches.map((match) => {
             const live = isLive(match.match_id);
             const tHome = getTeam(match.team_house_id);
             const tOut = getTeam(match.team_out_id);
             const isFinished = match.status_game === "Finalizado";
-            const isTie = isFinished && getScore(match, "s1") === getScore(match, "s2");
 
-            // 👇 CALCULA O AGREGADO PARA EXIBIÇÃO SE FOR MATA MATA VOLTA 👇
-            const isVoltaRound = isHomeAway && match.round >= 90 && match.round % 2 !== 0;
-            const idaGame = isVoltaRound ? games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id && g.team_out_id === match.team_house_id) : null;
+            const idaGame = match.is_return_match ? games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id) : null;
             let aggHome = null; let aggOut = null;
             
             if (idaGame) {
@@ -251,7 +304,7 @@ const LiveScore = () => {
                       <p className="font-display text-lg font-bold leading-tight flex items-center justify-center gap-2">
                         {tHome?.name_player || "A Definir"}
                         {isFinished && match.penalty_winner_id === tHome?.id && (
-                           <span className="text-[9px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded tracking-widest uppercase">Pênaltis</span>
+                           <span className="text-[9px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded tracking-widest uppercase">Penaltis</span>
                         )}
                       </p>
                       <p className="text-muted-foreground text-xs uppercase tracking-wider font-bold mt-1">{tHome?.team_player}</p>
@@ -265,10 +318,9 @@ const LiveScore = () => {
                   <div className="flex flex-col items-center justify-center shrink-0">
                     <div className="flex items-center gap-4 md:gap-6">
                       <span className={`font-display text-5xl md:text-7xl font-bold ${live ? 'text-primary neon-text' : 'text-foreground'}`}>{getScore(match, "s1")}</span>
-                      <span className="font-display text-2xl text-muted-foreground/50 pb-2">×</span>
+                      <span className="font-display text-2xl text-muted-foreground/50 pb-2">x</span>
                       <span className={`font-display text-5xl md:text-7xl font-bold ${live ? 'text-primary neon-text' : 'text-foreground'}`}>{getScore(match, "s2")}</span>
                     </div>
-                    {/* 👇 O AGREGADO DA VOLTA 👇 */}
                     {idaGame && (
                       <div className="mt-2 text-[10px] text-neon-blue font-bold uppercase tracking-widest bg-neon-blue/10 border border-neon-blue/30 px-2 py-0.5 rounded-md shadow-sm">
                           Agregado: {aggHome} - {aggOut}
@@ -282,7 +334,7 @@ const LiveScore = () => {
                       <p className="font-display text-lg font-bold leading-tight flex items-center justify-center gap-2">
                         {tOut?.name_player || "A Definir"}
                         {isFinished && match.penalty_winner_id === tOut?.id && (
-                           <span className="text-[9px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded tracking-widest uppercase">Pênaltis</span>
+                           <span className="text-[9px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded tracking-widest uppercase">Penaltis</span>
                         )}
                       </p>
                       <p className="text-muted-foreground text-xs uppercase tracking-wider font-bold mt-1">{tOut?.team_player}</p>
@@ -318,8 +370,8 @@ const LiveScore = () => {
 
       <div className="lg:w-[380px] w-full border border-border/50 bg-card/50 p-6 rounded-xl self-start sticky top-24">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider">Classificação Geral</h3>
-          <div className="h-2 w-2 rounded-full bg-primary animate-pulse-neon" title="Atualização em tempo real"></div>
+          <h3 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider">Classificacao Geral</h3>
+          <div className="h-2 w-2 rounded-full bg-primary animate-pulse-neon" title="Atualizacao em tempo real"></div>
         </div>
         <StandingsTable teams={teams} compact ignoreGroups={true} />
       </div>
@@ -327,19 +379,19 @@ const LiveScore = () => {
       <AlertDialog open={!!penaltyPrompt} onOpenChange={(open) => !open && setPenaltyPrompt(null)}>
         <AlertDialogContent className="max-w-md shadow-[0_0_20px_rgba(0,191,255,0.15)]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-2xl text-neon-blue">Disputa de Pênaltis!</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">O agregado terminou empatado. <strong>Quem venceu nos pênaltis?</strong></AlertDialogDescription>
+            <AlertDialogTitle className="text-center text-2xl text-neon-blue">Disputa de Penaltis!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">O agregado terminou empatado. <strong>Quem venceu nos penaltis?</strong></AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
              <button onClick={() => penaltyPrompt && endMatch(penaltyPrompt.match.match_id, penaltyPrompt.match.team_house_id)} className="flex flex-col items-center justify-center p-6 border-2 border-border/50 rounded-xl hover:border-primary hover:bg-primary/10 transition-all group">
                 <Shield className="h-12 w-12 mb-3 transition-transform group-hover:scale-110" style={{ color: getTeam(penaltyPrompt?.match.team_house_id || 0)?.color }} />
                 <span className="font-bold text-sm text-center">{getTeam(penaltyPrompt?.match.team_house_id || 0)?.name_player}</span>
-                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avançar</span>
+                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avancar</span>
              </button>
              <button onClick={() => penaltyPrompt && endMatch(penaltyPrompt.match.match_id, penaltyPrompt.match.team_out_id)} className="flex flex-col items-center justify-center p-6 border-2 border-border/50 rounded-xl hover:border-primary hover:bg-primary/10 transition-all group">
                 <Shield className="h-12 w-12 mb-3 transition-transform group-hover:scale-110" style={{ color: getTeam(penaltyPrompt?.match.team_out_id || 0)?.color }} />
                 <span className="font-bold text-sm text-center">{getTeam(penaltyPrompt?.match.team_out_id || 0)?.name_player}</span>
-                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avançar</span>
+                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avancar</span>
              </button>
           </div>
           <div className="flex justify-center mt-2"><AlertDialogCancel className="bg-transparent border-0 text-muted-foreground hover:bg-muted/50">Cancelar (Manter Ao Vivo)</AlertDialogCancel></div>

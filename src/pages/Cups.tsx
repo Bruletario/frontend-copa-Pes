@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Trophy, Crown, Download, Upload, ChevronDown, ChevronUp, Medal, Loader2, Shield, Trash2 } from "lucide-react";
+import { Trophy, Crown, Download, Upload, ChevronDown, ChevronUp, Medal, Loader2, Shield, Trash2, Edit2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { API_URL } from "@/lib/api";
@@ -30,6 +30,10 @@ const Cups = () => {
 
   const [cupToDelete, setCupToDelete] = useState<{id: number, nome: string} | null>(null);
   const [playerToDelete, setPlayerToDelete] = useState<{id: number | string, nome: string} | null>(null);
+
+  // 👇 ESTADOS PARA A EDIÇÃO INLINE DO NOME DA COPA 👇
+  const [editingCupId, setEditingCupId] = useState<number | null>(null);
+  const [editCupName, setEditCupName] = useState("");
 
   const { toast } = useToast();
 
@@ -129,6 +133,30 @@ const Cups = () => {
     }
   };
 
+  // 👇 FUNÇÃO PARA SALVAR A EDIÇÃO INLINE DO NOME DA COPA 👇
+  const handleSaveCupName = async (cupId: number) => {
+    if (!editCupName.trim()) {
+        setEditingCupId(null);
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/COPAS/${cupId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nome_copa: editCupName })
+        });
+        if (response.ok) {
+            toast({ title: "Atualizado!", description: "Nome do campeonato alterado." });
+            fetchCupsAndPlayers();
+        } else {
+            throw new Error();
+        }
+    } catch(e) {
+        toast({ title: "Erro", description: "Falha ao renomear.", variant: "destructive" });
+    }
+    setEditingCupId(null);
+  };
+
   const handleExportSingleCup = (cup: CupHistoryData) => {
     const sorted = [...(cup.classificacao_final || [])].sort((a, b) => b.points - a.points);
 
@@ -213,10 +241,8 @@ const Cups = () => {
                     {historicalData.map((player, i) => {
                       const sg = player.goals_score - player.goals_conceded;
                       
-                      // 👇 CORREÇÃO: LÓGICA INTELIGENTE DE RESOLUÇÃO DE CLONES 👇
                       const playerRecords = allPlayersMaster.filter(p => p.name_player === player.name_player);
                       const activeRecord = playerRecords.find(p => p.team_player !== 'INATIVO');
-                      // Se houver uma versão ativa, ele pega a ativa. Se for só inativo, ele usa o inativo.
                       const dbPlayer = activeRecord || playerRecords[0];
                       const isInativo = dbPlayer?.team_player === 'INATIVO';
 
@@ -293,8 +319,26 @@ const Cups = () => {
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
                         <Trophy className="h-6 w-6 text-primary" />
                       </div>
+                      
+                      {/* 👇 INLINE EDITING APLICADO AQUI 👇 */}
                       <div>
-                        <h3 className="font-display text-lg font-bold text-foreground">{cup.nome_copa}</h3>
+                        {editingCupId === cup.id ? (
+                          <input
+                              autoFocus
+                              type="text"
+                              value={editCupName}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setEditCupName(e.target.value)}
+                              onBlur={() => handleSaveCupName(cup.id)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSaveCupName(cup.id)}
+                              className="bg-transparent border-b-2 border-primary text-lg font-display font-bold text-foreground outline-none focus:border-neon-blue transition-colors px-1 w-48 md:w-64"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2 group" onClick={(e) => { e.stopPropagation(); setEditingCupId(cup.id); setEditCupName(cup.nome_copa); }}>
+                              <h3 className="font-display text-lg font-bold text-foreground">{cup.nome_copa}</h3>
+                              <Edit2 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary" />
+                          </div>
+                        )}
                         <p className="text-sm text-muted-foreground">Edição Finalizada</p>
                       </div>
                     </div>
@@ -339,7 +383,6 @@ const Cups = () => {
                           </thead>
                           <tbody>
                             {standings.map((s, i) => {
-                              // 👇 CORREÇÃO: LÓGICA INTELIGENTE DE CLONES APLICADA NA TABELA EXPANDIDA TAMBÉM 👇
                               const playerRecords = allPlayersMaster.filter(p => p.name_player === s.name_player);
                               const activeRecord = playerRecords.find(p => p.team_player !== 'INATIVO');
                               const dbPlayer = activeRecord || playerRecords[0];

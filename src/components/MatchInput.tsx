@@ -14,9 +14,10 @@ interface MatchInputProps {
   teams: TeamData[];
   onRefresh: () => void;
   config: any;
+  onSwitchTab?: (tab: "standings" | "matches" | "bracket") => void;
 }
 
-export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps) {
+export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: MatchInputProps) {
   const [showLeague, setShowLeague] = useState(true);
   const [showKnockout, setShowKnockout] = useState(true);
   const [scores, setScores] = useState<Record<number, { s1: string; s2: string }>>({});
@@ -30,14 +31,18 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
   const leagueGames = games.filter(g => g.round < 90);
   const knockoutGames = games.filter(g => g.round >= 90);
   
+  const hasLeague = leagueGames.length > 0;
+  const isLeagueOnly = config.type === 'LEAGUE';
+  const isLeagueFinished = hasLeague && leagueGames.every(g => g.status_game === "Finalizado");
+
   const leagueRounds = [...new Set(leagueGames.map((g) => g.round))].sort((a, b) => a - b);
   const knockoutRounds = [...new Set(knockoutGames.map((g) => g.round))].sort((a, b) => a - b);
-  const isHomeAway = config.knockoutFormat === "homeaway";
+  const isHomeAway = knockoutGames.some(g => g.is_return_match);
 
   const getKnockoutRoundTitle = (round: number, isHomeAway: boolean) => {
     if (round === 99) return "Disputa de 3º Lugar (Bronze)";
     const knRounds = knockoutGames.filter(r => r.round !== 99).map(r => r.round);
-    if (knRounds.length === 0) return "Eliminatórias";
+    if (knRounds.length === 0) return "Eliminatorias";
 
     const maxRound = Math.max(...knRounds);
     const dist = maxRound - round;
@@ -57,7 +62,7 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
         if (dist === 2) return "Quartas de Final";
         if (dist === 3) return "Oitavas de Final";
     }
-    return `Fase Eliminatória ${round}`;
+    return `Fase Eliminatoria ${round}`;
   };
 
   const handleScoreChange = (matchId: number, side: "s1" | "s2", value: string) => {
@@ -69,7 +74,7 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
     const s2 = scores[match.match_id]?.s2;
 
     if (s1 === undefined || s2 === undefined || s1 === "" || s2 === "") {
-      toast({ title: "Atenção", description: "Preencha os dois placares.", variant: "destructive" });
+      toast({ title: "Atencao", description: "Preencha os dois placares.", variant: "destructive" });
       return;
     }
 
@@ -77,20 +82,19 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
     const isKnockoutMatch = match.round >= 90 && match.round < 99;
 
     if (isKnockoutMatch) {
-        if (!isHomeAway) {
-            needsPenalties = s1 === s2;
-        } else {
-            const isVoltaRound = match.round % 2 !== 0;
-            if (isVoltaRound) {
-                const idaGame = games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id && g.team_out_id === match.team_house_id);
-                if (idaGame) {
-                    const agg1 = Number(s1) + (idaGame.goals_out || 0);
-                    const agg2 = Number(s2) + (idaGame.goals_home || 0);
-                    needsPenalties = agg1 === agg2;
-                }
+        if (match.is_return_match) {
+            // E a partida de volta, verifica o agregado com a partida de ida
+            const idaGame = games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id);
+            if (idaGame) {
+                const agg1 = Number(s1) + (idaGame.goals_out || 0);
+                const agg2 = Number(s2) + (idaGame.goals_home || 0);
+                needsPenalties = agg1 === agg2;
             }
+        } else if (!isHomeAway) {
+            // E jogo unico eliminatorio
+            needsPenalties = Number(s1) === Number(s2);
         }
-    } else if (match.round === 99 && s1 === s2) {
+    } else if (match.round === 99 && Number(s1) === Number(s2)) {
         needsPenalties = true;
     }
 
@@ -109,7 +113,7 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ goals_home: Number(s1), goals_out: Number(s2), status_game: "Finalizado", advancing_team_id: advancingTeamId }),
       });
-      toast({ title: "Salvo!", description: advancingTeamId ? "Vencedor nos pênaltis definido!" : "Placar atualizado." });
+      toast({ title: "Salvo!", description: advancingTeamId ? "Vencedor nos penaltis definido!" : "Placar atualizado." });
       setPenaltyPrompt(null);
       onRefresh();
     } catch (error) {
@@ -125,10 +129,8 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
     const tHome = getTeam(match.team_house_id);
     const tOut = getTeam(match.team_out_id);
     const isFinished = match.status_game === "Finalizado";
-    const isTie = isFinished && match.goals_home === match.goals_out;
 
-    const isVoltaRound = isHomeAway && match.round >= 90 && match.round % 2 !== 0;
-    const idaGame = isVoltaRound ? games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id && g.team_out_id === match.team_house_id) : null;
+    const idaGame = match.is_return_match ? games.find(g => g.round === match.round - 1 && g.team_house_id === match.team_out_id) : null;
     let aggHome = null; let aggOut = null;
     if (idaGame && isFinished) {
         aggHome = match.goals_home + (idaGame.goals_out || 0);
@@ -140,7 +142,7 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
         <div className="flex-1 w-full flex items-center justify-center md:justify-end gap-3">
           <div className="text-center md:text-right">
             <span className="font-display font-bold flex items-center justify-center md:justify-end gap-2 leading-tight text-foreground">
-              {isFinished && match.penalty_winner_id === tHome?.id && ( <span className="text-[8px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded uppercase tracking-wider">Pênaltis</span> )}
+              {isFinished && match.penalty_winner_id === tHome?.id && ( <span className="text-[8px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded uppercase tracking-wider">Penaltis</span> )}
               {tHome?.name_player || "A Definir"}
             </span>
             <span className="text-xs text-muted-foreground">{tHome?.team_player}</span>
@@ -151,7 +153,7 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
         <div className="flex flex-col items-center gap-2 px-4 shrink-0">
           <div className="flex items-center gap-3">
             <input type="number" min={0} className={inputModernCSS} placeholder="-" value={scores[match.match_id]?.s1 ?? (isFinished ? match.goals_home : "")} onChange={(e) => handleScoreChange(match.match_id, "s1", e.target.value)} />
-            <span className="text-muted-foreground font-display text-sm">X</span>
+            <span className="text-muted-foreground font-display text-sm">x</span>
             <input type="number" min={0} className={inputModernCSS} placeholder="-" value={scores[match.match_id]?.s2 ?? (isFinished ? match.goals_out : "")} onChange={(e) => handleScoreChange(match.match_id, "s2", e.target.value)} />
           </div>
           
@@ -171,7 +173,7 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
           <div className="text-center md:text-left">
             <span className="font-display font-bold flex items-center justify-center md:justify-start gap-2 leading-tight text-foreground">
               {tOut?.name_player || "A Definir"}
-              {isFinished && match.penalty_winner_id === tOut?.id && ( <span className="text-[8px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded uppercase tracking-wider">Pênaltis</span> )}
+              {isFinished && match.penalty_winner_id === tOut?.id && ( <span className="text-[8px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded uppercase tracking-wider">Penaltis</span> )}
             </span>
             <span className="text-xs text-muted-foreground">{tOut?.team_player}</span>
           </div>
@@ -183,7 +185,7 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
   return (
     <div className="space-y-6 w-full animate-fade-in relative">
       <div className="bg-primary/10 w-full text-primary px-4 py-2.5 rounded-lg text-sm font-medium text-center border border-primary/20 flex items-center justify-center gap-2">
-        <Trophy className="h-4 w-4" /> O Live Score é ideal, mas você também pode registrar resultados diretamente aqui.
+        <Trophy className="h-4 w-4" /> O Live Score e ideal, mas voce tambem pode registrar resultados diretamente aqui.
       </div>
 
       {config.type !== 'KNOCKOUT' && (
@@ -192,19 +194,32 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
             <h3 className="font-display text-lg font-bold text-primary">Fase Inicial</h3>
             <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${showLeague ? "rotate-180" : ""}`} />
           </button>
-          <div className={`transition-all duration-500 ease-in-out ${showLeague ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+          <div className={`transition-all duration-500 ease-in-out ${showLeague ? "max-h-[20000px] opacity-100" : "max-h-0 opacity-0"}`}>
             <div className="p-4 space-y-6 border-t border-border/50">
               {leagueGames.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6">O campeonato não foi iniciado.</p>
+                <p className="text-center text-muted-foreground py-6">O campeonato nao foi iniciado.</p>
               ) : (
-                leagueRounds.map(round => (
-                  <div key={round} className="space-y-3 w-full">
-                    <h4 className="w-full font-display text-sm font-bold text-muted-foreground pl-1 uppercase tracking-wider text-left border-b border-border/30 pb-2">Rodada {round}</h4>
-                    <div className="flex flex-col w-full gap-3">
-                      {leagueGames.filter((m) => m.round === round).map(renderMatchCard)}
+                <>
+                  {leagueRounds.map(round => (
+                    <div key={round} className="space-y-3 w-full">
+                      <h4 className="w-full font-display text-sm font-bold text-muted-foreground pl-1 uppercase tracking-wider text-left border-b border-border/30 pb-2">Rodada {round}</h4>
+                      <div className="flex flex-col w-full gap-3">
+                        {leagueGames.filter((m) => m.round === round).map(renderMatchCard)}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                  
+                  {isLeagueFinished && isLeagueOnly && (
+                    <div className="w-full mt-8 animate-fade-in">
+                        <div className="bg-neon-yellow/10 border border-neon-yellow/50 p-6 rounded-xl text-center shadow-[0_0_15px_rgba(250,204,21,0.1)]">
+                            <Trophy className="h-10 w-10 text-neon-yellow mx-auto mb-3 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" />
+                            <h3 className="text-xl font-black text-neon-yellow uppercase tracking-widest">Campeonato Encerrado!</h3>
+                            <p className="text-muted-foreground mt-2">Todas as rodadas foram concluidas.</p>
+                            <p className="text-sm font-bold mt-1">Role para o topo da pagina para ver o Podio e Guardar o Historico.</p>
+                        </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -214,10 +229,10 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
       {config.type !== 'LEAGUE' && (
         <div className="card-elevated w-full p-0 overflow-hidden border border-border/50">
           <button onClick={() => setShowKnockout(!showKnockout)} className="w-full flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/40 transition-colors">
-            <h3 className="font-display text-lg font-bold text-neon-blue">Fase Eliminatória (Mata-Mata)</h3>
+            <h3 className="font-display text-lg font-bold text-neon-blue">Fase Eliminatoria (Mata-Mata)</h3>
             <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${showKnockout ? "rotate-180" : ""}`} />
           </button>
-          <div className={`transition-all duration-500 ease-in-out ${showKnockout ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+          <div className={`transition-all duration-500 ease-in-out ${showKnockout ? "max-h-[20000px] opacity-100" : "max-h-0 opacity-0"}`}>
             <div className="p-4 space-y-6 border-t border-border/50">
               {knockoutGames.length > 0 ? (
                 knockoutRounds.map((round) => (
@@ -241,22 +256,22 @@ export function MatchInput({ games, teams, onRefresh, config }: MatchInputProps)
       <AlertDialog open={!!penaltyPrompt} onOpenChange={(open) => !open && setPenaltyPrompt(null)}>
         <AlertDialogContent className="max-w-md shadow-[0_0_20px_rgba(0,191,255,0.15)]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-2xl text-neon-blue">Disputa de Pênaltis!</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">O agregado terminou empatado. <strong>Quem venceu nos pênaltis?</strong></AlertDialogDescription>
+            <AlertDialogTitle className="text-center text-2xl text-neon-blue">Disputa de Penaltis!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">O agregado terminou empatado. <strong>Quem venceu nos penaltis?</strong></AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
              <button onClick={() => penaltyPrompt && executeSave(penaltyPrompt.match.match_id, penaltyPrompt.s1, penaltyPrompt.s2, penaltyPrompt.match.team_house_id)} className="flex flex-col items-center justify-center p-6 border-2 border-border/50 rounded-xl hover:border-primary hover:bg-primary/10 transition-all group">
                 <Shield className="h-12 w-12 mb-3 transition-transform group-hover:scale-110" style={{ color: getTeam(penaltyPrompt?.match.team_house_id || 0)?.color }} />
                 <span className="font-bold text-sm text-center">{getTeam(penaltyPrompt?.match.team_house_id || 0)?.name_player}</span>
-                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avançar</span>
+                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avancar</span>
              </button>
              <button onClick={() => penaltyPrompt && executeSave(penaltyPrompt.match.match_id, penaltyPrompt.s1, penaltyPrompt.s2, penaltyPrompt.match.team_out_id)} className="flex flex-col items-center justify-center p-6 border-2 border-border/50 rounded-xl hover:border-primary hover:bg-primary/10 transition-all group">
                 <Shield className="h-12 w-12 mb-3 transition-transform group-hover:scale-110" style={{ color: getTeam(penaltyPrompt?.match.team_out_id || 0)?.color }} />
                 <span className="font-bold text-sm text-center">{getTeam(penaltyPrompt?.match.team_out_id || 0)?.name_player}</span>
-                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avançar</span>
+                <span className="text-[10px] text-muted-foreground mt-1 text-center">Avancar</span>
              </button>
           </div>
-          <div className="flex justify-center mt-2"><AlertDialogCancel className="bg-transparent border-0 text-muted-foreground hover:bg-muted/50">Cancelar (Não salvar placar)</AlertDialogCancel></div>
+          <div className="flex justify-center mt-2"><AlertDialogCancel className="bg-transparent border-0 text-muted-foreground hover:bg-muted/50">Cancelar (Nao salvar placar)</AlertDialogCancel></div>
         </AlertDialogContent>
       </AlertDialog>
     </div>

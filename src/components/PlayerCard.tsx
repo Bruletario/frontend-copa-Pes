@@ -8,52 +8,76 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ player, onClick, index = 0 }: PlayerCardProps) {
+  
+  const getOvrColor = (ovr: number) => {
+    if (ovr < 60) return "text-red-500";
+    if (ovr < 70) return "text-orange-500";
+    if (ovr < 80) return "text-yellow-500";
+    if (ovr < 90) return "text-green-500";
+    return "text-blue-500"; 
+  };
+
+  // ATUALIZAÇÃO: Apontando para os dados de Histórico Geral (ALL TIME) para os resultados aparecerem
+  const victories = player.all_time_wins;
+  const draws = player.all_time_draws;
+  const defeats = player.all_time_losses;
+  const isAtivo = player.team_player !== 'INATIVO';
+
   return (
     <div
       onClick={onClick}
-      className="card-elevated p-4 cursor-pointer hover:border-primary/40 transition-all duration-300 group flex flex-col justify-between animate-fade-in relative"
+      // Aumentamos o padding principal (p-4 para p-5)
+      className="card-elevated p-5 cursor-pointer hover:border-primary/40 transition-all duration-300 group flex flex-col justify-between animate-fade-in relative"
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      {/* OVR do time adicionado no topo direito */}
-      <div className="absolute top-4 right-4 flex flex-col items-center justify-center bg-background border border-border/50 rounded-md px-2 py-1 shadow-sm">
-         <span className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider leading-none mb-0.5">OVR</span>
-         <span className="text-sm font-black text-foreground font-mono leading-none">{player.ovr}</span>
+      {/* OVR + Tag Ativo/Inativo agrupados - Tamanhos maiores */}
+      <div className="absolute top-5 right-5 flex flex-col items-center justify-center bg-transparent p-1">
+         <span className="text-[9px] text-white/70 font-bold uppercase tracking-wider leading-none mb-0.5">OVR</span>
+         {/* Número do OVR maior: text-2xl */}
+         <span className={`text-2xl font-black font-display leading-none ${getOvrColor(player.ovr)}`}>
+           {player.ovr}
+         </span>
+         {isAtivo ? (
+            <span className="text-[8px] mt-1.5 text-[#00BFFF] border border-[#00BFFF]/50 bg-[#00BFFF]/10 px-1.5 py-0.5 rounded tracking-widest font-bold uppercase">ATIVO</span>
+         ) : (
+            <span className="text-[8px] mt-1.5 text-[#FF003F] border border-[#FF003F]/50 bg-[#FF003F]/10 px-1.5 py-0.5 rounded tracking-widest font-bold uppercase">INATIVO</span>
+         )}
       </div>
 
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Header - Aumentamos distanciamento e avatares/fontes */}
+      <div className="flex items-center gap-4 mb-5 pr-12">
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center font-display text-xl font-bold text-black shadow-lg border-2 border-background/50 shrink-0"
+          // Avatar maior: de w-12 para w-14 e fonte text-2xl
+          className="w-14 h-14 rounded-full flex items-center justify-center font-display text-2xl font-bold text-black shadow-lg border-2 border-background/50 shrink-0"
           style={{ backgroundColor: player.color || '#FFFFFF' }}
         >
           {player.name_player[0].toUpperCase()}
         </div>
-        <div className="flex-1 min-w-0 pr-10">
-          <h3 className="font-display text-lg font-bold group-hover:text-primary transition-colors flex items-center gap-2 truncate">
-            <span className="truncate">{player.name_player}</span>
-            {/* Tag ATIVO em Azul Neon agora retangular */}
-            <span className="text-[9px] text-[#00BFFF] border border-[#00BFFF]/50 bg-[#00BFFF]/10 px-1.5 py-0.5 rounded-sm shadow-[0_0_8px_rgba(0,191,255,0.4)] tracking-widest font-black uppercase shrink-0 leading-none h-fit">
-              ATIVO
-            </span>
-          </h3>
-          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 mb-1 truncate">
-             {player.team_player} <span className="opacity-50">•</span> {player.formation}
-          </p>
-          
-          {/* Lógica de Medalhas (Badges) do Histórico Geral */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
-            {player.ouro > 0 && <span className="text-[10px] shrink-0 font-bold bg-muted px-1.5 py-0.5 rounded-md border border-neon-yellow/30 text-neon-yellow shadow-sm">🥇 {player.ouro}</span>}
-            {player.prata > 0 && <span className="text-[10px] shrink-0 font-bold bg-muted px-1.5 py-0.5 rounded-md border border-gray-400/30 text-gray-300 shadow-sm">🥈 {player.prata}</span>}
-            {player.bronze > 0 && <span className="text-[10px] shrink-0 font-bold bg-muted px-1.5 py-0.5 rounded-md border border-amber-600/30 text-amber-500 shadow-sm">🥉 {player.bronze}</span>}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            {/* Nome maior: text-xl */}
+            <h3 className="font-display font-bold text-white text-xl leading-tight truncate max-w-[140px]">
+              {player.name_player}
+            </h3>
+            <div className="flex gap-1 mt-0.5">
+              {/* Medalhas ligeiramente maiores: text-[10px] */}
+              {player.ouro > 0 && <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded border border-neon-yellow/30 text-neon-yellow shadow-sm">🥇 {player.ouro}</span>}
+              {player.prata > 0 && <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded border border-gray-400/30 text-gray-300 shadow-sm">🥈 {player.prata}</span>}
+              {player.bronze > 0 && <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded border border-amber-600/30 text-amber-500 shadow-sm">🥉 {player.bronze}</span>}
+            </div>
           </div>
+          {/* Subtítulo maior: text-sm */}
+          <p className="text-sm text-white/70 truncate max-w-[140px]">
+            {player.team_player}
+          </p>
         </div>
       </div>
 
-      {/* Stats da Temporada Atual (Agora usando Histórico Geral com design minimalista) */}
-      <div className="grid grid-cols-3 gap-2 mt-auto">
-        <StatItem icon={<Check className="h-3.5 w-3.5" />} label="Vitórias" value={player.all_time_wins} color="text-win" />
-        <StatItem icon={<Minus className="h-3.5 w-3.5" />} label="Empates" value={player.all_time_draws} color="text-draw" />
-        <StatItem icon={<X className="h-3.5 w-3.5" />} label="Derrotas" value={player.all_time_losses} color="text-loss" />
+      {/* Stats da Temporada Atual mantendo as cores em Branco com gap maior */}
+      <div className="grid grid-cols-3 gap-3 mt-auto">
+        <StatItem icon={<Check className="h-4 w-4" />} label="Vitórias" value={victories} color="text-white" />
+        <StatItem icon={<Minus className="h-4 w-4" />} label="Empates" value={draws} color="text-white" />
+        <StatItem icon={<X className="h-4 w-4" />} label="Derrotas" value={defeats} color="text-white" />
       </div>
     </div>
   );
@@ -61,10 +85,14 @@ export function PlayerCard({ player, onClick, index = 0 }: PlayerCardProps) {
 
 function StatItem({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
   return (
-    <div className="flex flex-col items-center bg-muted/50 rounded-md py-2 border border-border/30">
-      <div className={`${color} mb-1`}>{icon}</div>
-      <span className="font-display text-lg font-bold leading-none">{value}</span>
-      <span className="text-[9px] text-muted-foreground uppercase tracking-wider mt-1">{label}</span>
+    // Padding maior (px-2.5 py-2)
+    <div className="bg-muted/30 rounded px-2.5 py-2 text-center border border-border/20 flex flex-col items-center justify-center">
+      <div className={`flex items-center gap-1.5 font-mono text-sm font-bold ${color}`}>
+        {icon}
+        {value}
+      </div>
+      {/* Label ligeiramente maior: text-[10px] */}
+      <span className="text-[10px] text-white/70 tracking-tight mt-1">{label}</span>
     </div>
   );
 }

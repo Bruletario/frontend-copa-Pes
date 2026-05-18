@@ -226,8 +226,8 @@ const Teams = () => {
       </div>
 
       {showDrawPanel && (
-        <div className="card-elevated neon-border p-6 bg-muted/5 animate-fade-in">
-          <h3 className="font-display text-lg font-bold mb-4 flex items-center gap-2 text-primary">Sorteio de Times (Base)</h3>
+        <div className="card-elevated p-6 bg-muted/5 animate-fade-in">
+          <h3 className="font-display text-lg font-bold mb-4 flex items-center gap-2 text-primary">Sorteio de Times</h3>
           <p className="text-sm text-muted-foreground mb-4">
             Você tem <strong>{playersWithoutTeam.length} técnico(s)</strong> na fila. Adicione opções de clubes para sortear.
           </p>
@@ -241,7 +241,7 @@ const Teams = () => {
 
             <div className="flex gap-2">
               <input type="text" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddTeamToList()} placeholder="Digite o Clube e aperte Enter" className={inputModernCSS} disabled={playersWithoutTeam.length === 0} />
-              <button onClick={handleAddTeamToList} disabled={playersWithoutTeam.length === 0} className="bg-secondary px-4 rounded-lg hover:bg-secondary/80 transition-colors font-bold disabled:opacity-50">+</button>
+              <button onClick={handleAddTeamToList} disabled={playersWithoutTeam.length === 0} className="bg-primary text-primary-foreground neon-glow px-4 rounded-lg hover:bg-primary text-primary-foreground neon-glow transition-colors font-bold disabled:opacity-50">+</button>
             </div>
             
              {teamList.length > 0 && (

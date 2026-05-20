@@ -149,7 +149,7 @@ const Championship = () => {
     const autoGenerateKnockout = async () => {
       if (isLeagueFinished && config.type !== 'LEAGUE' && knockoutGames.length === 0 && !isAutoConsolidating) {
         setIsAutoConsolidating(true);
-        toast({ title: "Fase Inicial Concluida!", description: "Gerando cruzamentos do Mata-Mata automaticamente..." });
+        toast({ title: "Fase inicial concluida!", description: "Gerando cruzamentos do Mata-Mata..." });
         try {
           await fetch(`${API_URL}/GAMES/MATA-MATA`, { 
             method: "POST", headers: { "Content-Type": "application/json" }, 
@@ -167,9 +167,9 @@ const Championship = () => {
   }, [isLeagueFinished, knockoutGames.length, config.type, isAutoConsolidating, config, toast]);
   
   const getValidationError = () => {
-    if (totalTeams < 2) return "E necessario pelo menos 2 equipas para jogar.";
+    if (totalTeams < 2) return "É necessario pelo menos 2 equipes para jogar.";
     if (config.type.includes('GROUPS') && totalTeams < config.groupsCount * 2) return `Impossivel formar ${config.groupsCount} grupos.`;
-    if (config.type !== 'LEAGUE' && config.knockoutTeams > totalTeams) return `Mata-mata exige ${config.knockoutTeams} equipas, mas so existem ${totalTeams}.`;
+    if (config.type !== 'LEAGUE' && config.knockoutTeams > totalTeams) return `Mata-mata exige ${config.knockoutTeams} equipes, mas só existem ${totalTeams}.`;
     return null;
   };
 
@@ -199,7 +199,7 @@ const Championship = () => {
       fetchData();
       setActiveTab(config.type === 'KNOCKOUT' ? "bracket" : "matches");
     } catch (error: any) {
-      toast({ title: "Geracao Cancelada", description: error.message || "Erro.", variant: "destructive" });
+      toast({ title: "Geracao cancelada", description: error.message || "Erro.", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -259,7 +259,7 @@ const Championship = () => {
           <div className="bg-background/95 border border-border/50 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.15)] w-full max-w-2xl overflow-hidden relative">
             <div className="p-6 md:p-10 text-center relative z-10">
               <Crown className="h-14 w-14 text-neon-yellow drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] mx-auto mb-5 animate-bounce" />
-              <h2 className="text-3xl font-display font-black text-foreground uppercase tracking-tight mb-2">Fim de Jogo</h2>
+              <h2 className="text-3xl font-display font-black text-foreground uppercase tracking-tight mb-2">Fim de jogo</h2>
               <p className="text-sm text-muted-foreground">O campeonato <strong>{cupName}</strong> foi concluido.</p>
               
               <div className="flex items-end justify-center gap-3 sm:gap-6 my-10 h-40 w-full overflow-hidden">
@@ -286,10 +286,10 @@ const Championship = () => {
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
                 <button onClick={() => setShowChampionPopup(false)} className="px-6 py-2.5 rounded-lg font-bold text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-colors border border-border/50">
-                  Fechar (Ver Tabelas)
+                  Voltar
                 </button>
-                <button onClick={handleFinishCup} disabled={isFinishing} className="bg-neon-yellow text-black px-8 py-2.5 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(250,204,21,0.4)]">
-                  {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} Guardar Historico
+                <button onClick={handleFinishCup} disabled={isFinishing} className="bg-primary text-black px-8 py-2.5 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(250,204,21,0.4)]">
+                  {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} Encerrar campeonato
                 </button>
               </div>
             </div>
@@ -302,16 +302,16 @@ const Championship = () => {
           <div className="flex items-center gap-4">
             <Trophy className="h-10 w-10 text-neon-yellow drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Torneio Concluido</p>
-              <p className="font-display text-base text-foreground">O campeao e <span className="font-bold text-neon-yellow drop-shadow-sm">{podium.first.name_player}</span>.</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Torneio concluido</p>
+              <p className="font-display text-base text-foreground">O campeao é <span className="font-bold text-neon-yellow drop-shadow-sm">{podium.first.name_player}</span>.</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <button onClick={() => setShowChampionPopup(true)} className="w-full sm:w-auto px-6 py-2.5 bg-foreground text-background border-0 rounded-lg text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-              Ver Podio
+              Ver pódio
             </button>
             <button onClick={handleFinishCup} disabled={isFinishing} className="w-full sm:w-auto px-6 py-2.5 bg-neon-yellow text-black border-0 rounded-lg text-sm font-bold hover:bg-yellow-400 transition-all shadow-[0_0_15px_rgba(250,204,21,0.4)] flex items-center justify-center gap-2">
-              {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} Guardar Historico
+              {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} Guardar historico
             </button>
           </div>
         </div>
@@ -320,7 +320,7 @@ const Championship = () => {
       <div className="card-elevated p-0 overflow-hidden border border-border/50 shadow-sm">
         <button onClick={() => setShowAdminPanel(!showAdminPanel)} className="w-full flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/40 transition-colors">
           <div className="flex items-center gap-2 font-display text-base font-bold text-primary">
-            <Settings className="h-4 w-4" /> Configuracoes e Gerenciador
+            <Settings className="h-4 w-4" /> Gerenciador de campeonato
           </div>
           <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${showAdminPanel ? "rotate-180" : ""}`} />
         </button>
@@ -328,13 +328,12 @@ const Championship = () => {
         <div className={`transition-all duration-500 ease-in-out ${showAdminPanel ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"}`}>
           <div className="p-6 space-y-8 border-t border-border/50 bg-muted/5">
             <div className="space-y-3">
-              <h3 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary"></div> Passo 1: Estrutura</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
-                  { id: 'LEAGUE', label: "Pontos Corridos", desc: "Todos contra Todos" },
-                  { id: 'LEAGUE_KNOCKOUT', label: "Liga + Mata-Mata", desc: "Tabela p/ Finais" },
-                  { id: 'GROUPS_KNOCKOUT', label: "Grupos + Mata-Mata", desc: "Estilo Champions" },
-                  { id: 'KNOCKOUT', label: "So Mata-Mata", desc: "Eliminacao Direta" }
+                  { id: 'LEAGUE', label: "Liga", desc: "Pontos corridos" },
+                  { id: 'LEAGUE_KNOCKOUT', label: "Liga + Playoffs", desc: "Pontos corridos + Playoffs" },
+                  { id: 'GROUPS_KNOCKOUT', label: "Grupos + Mata-Mata", desc: "Fase de grupos e eliminatórioas" },
+                  { id: 'KNOCKOUT', label: "Mata-Mata", desc: "Eliminatórias" }
                 ].map(t => (
                   <button key={t.id} disabled={isTournamentRunning} onClick={() => updateConfig({...config, type: t.id as TourneyType})} className={`p-4 rounded-xl border-2 transition-all text-left relative overflow-hidden ${config.type === t.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-border/50 hover:border-primary/50 bg-background/50'} disabled:opacity-50 disabled:cursor-not-allowed`}>
                     <div className={`font-bold mb-1 ${config.type === t.id ? 'text-primary' : 'text-foreground'}`}>{t.label}</div>
@@ -351,7 +350,7 @@ const Championship = () => {
                   <h3 className="font-display text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary"></div> Fase Inicial</h3>
                   {config.type === 'GROUPS_KNOCKOUT' && (
                     <div className="relative">
-                      <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Quantidade de Grupos</label>
+                      <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Quantidade de grupos</label>
                       <Select disabled={isTournamentRunning} value={String(config.groupsCount)} onValueChange={(val) => updateConfig({...config, groupsCount: Number(val)})}>
                         <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Selecione" /></SelectTrigger>
                         <SelectContent><SelectItem value="2">2 Grupos</SelectItem><SelectItem value="4">4 Grupos</SelectItem></SelectContent>
@@ -359,10 +358,10 @@ const Championship = () => {
                     </div>
                   )}
                   <div className="relative">
-                    <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Formato Base</label>
+                    <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Formato</label>
                     <Select disabled={isTournamentRunning} value={config.baseFormat} onValueChange={(val) => updateConfig({...config, baseFormat: val})}>
                       <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent><SelectItem value="single">Jogo Unico</SelectItem><SelectItem value="homeaway">Ida e Volta</SelectItem></SelectContent>
+                      <SelectContent><SelectItem value="single">Jogo único</SelectItem><SelectItem value="homeaway">Ida e volta</SelectItem></SelectContent>
                     </Select>
                   </div>
                 </div>
@@ -370,17 +369,17 @@ const Championship = () => {
 
               {config.type !== 'LEAGUE' && (
                 <div className="space-y-4 bg-background/30 p-5 rounded-xl border border-border/30">
-                  <h3 className="font-display text-sm font-bold text-neon-blue uppercase tracking-wider flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-neon-blue"></div> Mata-Mata</h3>
+                  <h3 className="font-display text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary"></div> Mata-Mata</h3>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="relative">
                       <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Tamanho da Chave</label>
                       <Select disabled={hasKnockout} value={String(config.knockoutTeams)} onValueChange={(val) => updateConfig({...config, knockoutTeams: Number(val)})}>
                         <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Selecione" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="2">2 Equipas (Final)</SelectItem>
-                          <SelectItem value="4">4 Equipas (Semi)</SelectItem>
-                          <SelectItem value="8">8 Equipas (Quartas)</SelectItem>
-                          <SelectItem value="16">16 Equipas (Oitavas)</SelectItem>
+                          <SelectItem value="2">2 Equipes (Final)</SelectItem>
+                          <SelectItem value="4">4 Equipes (Semi)</SelectItem>
+                          <SelectItem value="8">8 Equipes (Quartas)</SelectItem>
+                          <SelectItem value="16">16 Equipes (Oitavas)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -388,12 +387,12 @@ const Championship = () => {
                       <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Formato</label>
                       <Select disabled={hasKnockout} value={config.knockoutFormat} onValueChange={(val) => updateConfig({...config, knockoutFormat: val})}>
                         <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent><SelectItem value="single">Jogo Unico</SelectItem><SelectItem value="homeaway">Ida e Volta</SelectItem></SelectContent>
+                        <SelectContent><SelectItem value="single">Jogo único</SelectItem><SelectItem value="homeaway">Ida e volta</SelectItem></SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="relative">
-                    <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Logica</label>
+                    <label className="text-xs text-muted-foreground block mb-1.5 font-medium ml-1">Lógica</label>
                     <Select disabled={hasKnockout} value={config.seedingLogic} onValueChange={(val) => updateConfig({...config, seedingLogic: val})}>
                       <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent><SelectItem value="POSITIONAL">Vantagem</SelectItem><SelectItem value="RANDOM">Sorteio</SelectItem></SelectContent>
@@ -404,9 +403,9 @@ const Championship = () => {
                     <div className="flex items-center gap-3 pt-3 mt-2 border-t border-border/30">
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" disabled={hasKnockout} className="sr-only peer" checked={config.hasThirdPlace} onChange={() => updateConfig({...config, hasThirdPlace: !config.hasThirdPlace})} />
-                        <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-blue"></div>
+                        <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-black after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
-                      <span className="text-sm font-medium text-foreground">Disputa de 3º Lugar</span>
+                      <span className="text-sm font-medium text-foreground">Disputa de 3º lugar</span>
                     </div>
                   )}
                 </div>
@@ -418,31 +417,31 @@ const Championship = () => {
                 {validationError ? (
                   <span className="inline-flex items-center gap-2 text-red-400 bg-red-500/10 px-4 py-2 rounded-lg text-sm font-bold border border-red-500/20"><AlertCircle className="h-4 w-4 shrink-0" /> {validationError}</span>
                 ) : (
-                  <span className="inline-flex items-center gap-2 text-primary bg-primary/10 px-4 py-2 rounded-lg text-sm font-bold border border-primary/20"><CheckCircle2 className="h-4 w-4 shrink-0" /> Prontos para gerar.</span>
+                  <span className="inline-flex items-center gap-2 text-primary bg-primary/10 px-4 py-2 rounded-lg text-sm font-bold border border-primary/20"><CheckCircle2 className="h-4 w-4 shrink-0" /> Prontos para gerar</span>
                 )}
               </div>
 
               <div className="flex flex-wrap items-center gap-3 shrink-0">
                 {!isTournamentRunning ? (
                   <button onClick={handleGenerateChampionship} disabled={isGenerating || !!validationError} className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-lg hover:opacity-90 neon-glow disabled:opacity-50 transition-all">
-                    {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />} Gerar Campeonato
+                    {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />} Gerar campeonato
                   </button>
                 ) : (
                   <>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                          <button className="flex items-center gap-2 px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/50 text-sm font-bold rounded-lg hover:bg-red-500/20 transition-all">
-                           {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Cancelar Torneio
+                           {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Cancelar campeonato
                          </button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Cancelar Campeonato?</AlertDialogTitle>
-                          <AlertDialogDescription>Esta acao apaga tudo.</AlertDialogDescription>
+                          <AlertDialogTitle>Cancelar campeonato?</AlertDialogTitle>
+                          <AlertDialogDescription>O campeonato será cancelado e os times perderão seus jogadores e técnicos.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel className="bg-red-600 text-white hover:bg-red-700 border-0">Voltar</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleCancelCup} className="bg-white text-black hover:bg-gray-200">Apagar torneio</AlertDialogAction>
+                          <AlertDialogAction onClick={handleCancelCup} className="bg-white text-black hover:bg-gray-200">Apagar campeonato</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>

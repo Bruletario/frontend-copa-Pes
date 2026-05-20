@@ -48,8 +48,8 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
     const dist = maxRound - round;
     
     if (isHomeAway) {
-        if (dist === 0) return "Grande Final (Volta)";
-        if (dist === 1) return "Grande Final (Ida)";
+        if (dist === 0) return "Final (Volta)";
+        if (dist === 1) return "Final (Ida)";
         if (dist === 2) return "Semifinal (Volta)";
         if (dist === 3) return "Semifinal (Ida)";
         if (dist === 4) return "Quartas de Final (Volta)";
@@ -57,7 +57,7 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
         if (dist === 6) return "Oitavas de Final (Volta)";
         if (dist === 7) return "Oitavas de Final (Ida)";
     } else {
-        if (dist === 0) return "Grande Final";
+        if (dist === 0) return "Final";
         if (dist === 1) return "Semifinal";
         if (dist === 2) return "Quartas de Final";
         if (dist === 3) return "Oitavas de Final";
@@ -185,7 +185,7 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
   return (
     <div className="space-y-6 w-full animate-fade-in relative">
       <div className="bg-primary/10 w-full text-primary px-4 py-2.5 rounded-lg text-sm font-medium text-center border border-primary/20 flex items-center justify-center gap-2">
-        <Trophy className="h-4 w-4" /> O Live Score e ideal, mas voce tambem pode registrar resultados diretamente aqui.
+        <Trophy className="h-4 w-4" /> Resultados gerais
       </div>
 
       {config.type !== 'KNOCKOUT' && (
@@ -197,7 +197,7 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
           <div className={`transition-all duration-500 ease-in-out ${showLeague ? "max-h-[20000px] opacity-100" : "max-h-0 opacity-0"}`}>
             <div className="p-4 space-y-6 border-t border-border/50">
               {leagueGames.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6">O campeonato nao foi iniciado.</p>
+                <p className="text-center text-muted-foreground py-6">O campeonato não foi iniciado!</p>
               ) : (
                 <>
                   {leagueRounds.map(round => (
@@ -213,9 +213,9 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
                     <div className="w-full mt-8 animate-fade-in">
                         <div className="bg-neon-yellow/10 border border-neon-yellow/50 p-6 rounded-xl text-center shadow-[0_0_15px_rgba(250,204,21,0.1)]">
                             <Trophy className="h-10 w-10 text-neon-yellow mx-auto mb-3 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" />
-                            <h3 className="text-xl font-black text-neon-yellow uppercase tracking-widest">Campeonato Encerrado!</h3>
-                            <p className="text-muted-foreground mt-2">Todas as rodadas foram concluidas.</p>
-                            <p className="text-sm font-bold mt-1">Role para o topo da pagina para ver o Podio e Guardar o Historico.</p>
+                            <h3 className="text-xl font-black text-neon-yellow uppercase tracking-widest">Campeonato encerrado!</h3>
+                            <p className="text-muted-foreground mt-2">Todas as rodadas foram concluídas.</p>
+                            <p className="text-sm font-bold mt-1">O pódio e a opção de guardar histórico estão no topo da página.</p>
                         </div>
                     </div>
                   )}
@@ -229,7 +229,7 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
       {config.type !== 'LEAGUE' && (
         <div className="card-elevated w-full p-0 overflow-hidden border border-border/50">
           <button onClick={() => setShowKnockout(!showKnockout)} className="w-full flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/40 transition-colors">
-            <h3 className="font-display text-lg font-bold text-neon-blue">Fase Eliminatoria (Mata-Mata)</h3>
+            <h3 className="font-display text-lg font-bold text-neon-blue">Fase Eliminatoria</h3>
             <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${showKnockout ? "rotate-180" : ""}`} />
           </button>
           <div className={`transition-all duration-500 ease-in-out ${showKnockout ? "max-h-[20000px] opacity-100" : "max-h-0 opacity-0"}`}>
@@ -256,8 +256,8 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
       <AlertDialog open={!!penaltyPrompt} onOpenChange={(open) => !open && setPenaltyPrompt(null)}>
         <AlertDialogContent className="max-w-md shadow-[0_0_20px_rgba(0,191,255,0.15)]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-2xl text-neon-blue">Disputa de Penaltis!</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">O agregado terminou empatado. <strong>Quem venceu nos penaltis?</strong></AlertDialogDescription>
+            <AlertDialogTitle className="text-center text-2xl text-neon-blue">Penaltis!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">O agregado terminou empatado. <strong>Disputa de Penaltis</strong></AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
              <button onClick={() => penaltyPrompt && executeSave(penaltyPrompt.match.match_id, penaltyPrompt.s1, penaltyPrompt.s2, penaltyPrompt.match.team_house_id)} className="flex flex-col items-center justify-center p-6 border-2 border-border/50 rounded-xl hover:border-primary hover:bg-primary/10 transition-all group">
@@ -271,7 +271,7 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
                 <span className="text-[10px] text-muted-foreground mt-1 text-center">Avancar</span>
              </button>
           </div>
-          <div className="flex justify-center mt-2"><AlertDialogCancel className="bg-transparent border-0 text-muted-foreground hover:bg-muted/50">Cancelar (Nao salvar placar)</AlertDialogCancel></div>
+          <div className="flex justify-center mt-2"><AlertDialogCancel className="bg-transparent border-0 text-muted-foreground hover:bg-muted/50">Cancelar</AlertDialogCancel></div>
         </AlertDialogContent>
       </AlertDialog>
     </div>

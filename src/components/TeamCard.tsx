@@ -18,13 +18,20 @@ const getPosColor = (pos: string) => {
 };
 
 export function TeamCard({ team, index = 0, onRemoveAthlete, onClearTeam }: TeamCardProps) {
-  // Estado local e independente para cada card!
   const [isExpanded, setIsExpanded] = useState(false);
   const isSemTime = team.team_player === "Sem Time" || !team.team_player;
 
+  // Categorias para agrupamento
+  const categories = [
+    { title: "Goleiro", positions: ['GL'] },
+    { title: "Defensores", positions: ['ZG', 'LD', 'LE'] },
+    { title: "Meias", positions: ['VOL', 'MC', 'MA', 'MD', 'ME'] },
+    { title: "Atacantes", positions: ['PE', 'PD', 'CA'] }
+  ];
+
   return (
     <div
-      className={`card-elevated transition-all duration-300 animate-fade-in flex flex-col overflow-hidden ${isExpanded ? 'border-primary/50' : 'hover:border-primary/30'} ${isSemTime ? 'opacity-70 grayscale-[0.5]' : ''}`}
+      className={`card-elevated transition-all duration-300 animate-fade-in flex flex-col overflow-hidden w-full ${isExpanded ? 'border-primary/50' : 'hover:border-primary/30'} ${isSemTime ? 'opacity-70 grayscale-[0.5]' : ''}`}
       style={{ animationDelay: `${index * 50}ms` }}
     >
       <div 
@@ -53,34 +60,52 @@ export function TeamCard({ team, index = 0, onRemoveAthlete, onClearTeam }: Team
         )}
       </div>
 
-      <div className={`transition-all duration-300 ease-in-out bg-muted/10 border-t border-border/30 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-3">
-             <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{team.formation}</span>
-             <button onClick={() => onClearTeam(team.id)} className="text-[10px] flex items-center gap-1 text-red-400 hover:text-red-500 font-bold transition-colors">
-               <UserMinus className="h-3 w-3" /> Dispensar Clube
-             </button>
-          </div>
-          
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
-            {(!team.squad || team.squad.length === 0) ? (
-              <p className="text-xs text-center text-muted-foreground py-4 bg-muted/20 rounded-lg border border-dashed border-border">Nenhum jogador customizado.</p>
-            ) : (
-              team.squad.map((athlete: SquadAthlete) => (
-                <div key={athlete.id} className="flex items-center justify-between bg-background/50 border border-border/50 rounded-md px-2.5 py-1.5 group hover:border-primary/50 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${getPosColor(athlete.position)}`}>{athlete.position}</span>
-                    <span className="text-sm font-medium">{athlete.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold font-mono opacity-80">{athlete.ovr}</span>
-                    <button onClick={(e) => { e.stopPropagation(); onRemoveAthlete(team.id, athlete.id); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-all p-1">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+      <div className={`grid transition-all duration-300 ease-in-out bg-muted/10 ${isExpanded ? 'grid-rows-[1fr] opacity-100 border-t border-border/30' : 'grid-rows-[0fr] opacity-0 border-t-0 border-transparent'}`}>
+        <div className="overflow-hidden">
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-3">
+               <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{team.formation}</span>
+               <button onClick={() => onClearTeam(team.id)} className="text-[10px] flex items-center gap-1 text-red-400 hover:text-red-500 font-bold transition-colors">
+                 <UserMinus className="h-3 w-3" /> Excluir time
+               </button>
+            </div>
+            
+            {/* Scrollbar padronizada aplicada aqui */}
+            <div className="space-y-4 max-h-60 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40">
+              {(!team.squad || team.squad.length === 0) ? (
+                <p className="text-xs text-center text-muted-foreground py-4 bg-muted/20 rounded-lg border border-dashed border-border">Nenhum jogador adicionado.</p>
+              ) : (
+                categories.map(cat => {
+                  const players = team.squad.filter(a => cat.positions.includes(a.position.toUpperCase()));
+                  if (players.length === 0) return null;
+                  
+                  return (
+                    <div key={cat.title}>
+                      <h4 className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2 border-b border-border/30 pb-1">{cat.title}</h4>
+                      <div className="space-y-1.5">
+                        {players.map((athlete: SquadAthlete) => (
+                          <div key={athlete.id} className="flex items-center justify-between bg-background/50 border border-border/50 rounded-md px-2.5 py-1.5 group hover:border-primary/50 transition-colors">
+                            <div className="flex items-center gap-2.5">
+                              {/* Tag de posição fixa com w-8 */}
+                              <span className={`w-8 shrink-0 inline-block text-center text-[9px] font-bold px-1 py-0.5 rounded border ${getPosColor(athlete.position)}`}>
+                                {athlete.position}
+                              </span>
+                              <span className="text-sm font-medium">{athlete.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold font-mono opacity-80">{athlete.ovr}</span>
+                              <button onClick={(e) => { e.stopPropagation(); onRemoveAthlete(team.id, athlete.id); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-all p-1">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>

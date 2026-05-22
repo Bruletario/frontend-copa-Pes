@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { StandingsTable } from "@/components/StandingsTable";
 import { MatchInput } from "@/components/MatchInput";
 import { TournamentBracket } from "@/components/TournamentBracket";
@@ -35,7 +36,6 @@ const Championship = () => {
 
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isAutoConsolidating, setIsAutoConsolidating] = useState(false);
 
   const [showChampionPopup, setShowChampionPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
@@ -49,10 +49,25 @@ const Championship = () => {
 
   const fetchData = async () => {
     try {
-      const [teamsRes, gamesRes, configRes] = await Promise.all([ fetch(`${API_URL}/TEAMS`), fetch(`${API_URL}/GAMES`), fetch(`${API_URL}/CONFIGS`) ]);
-      setTeams(await teamsRes.json());
-      setGames(await gamesRes.json());
-      if(configRes.ok) setConfig(await configRes.json());
+      // Dispara todas as requisicoes em paralelo
+      const [teamsRes, gamesRes, configRes] = await Promise.all([ 
+        fetch(`${API_URL}/TEAMS`), 
+        fetch(`${API_URL}/GAMES`), 
+        fetch(`${API_URL}/CONFIGS`) 
+      ]);
+      
+      // Aguarda o parse de todos os JSONs ANTES de mexer no state do React (evita Race Condition)
+      const [teamsData, gamesData, configData] = await Promise.all([
+        teamsRes.json(),
+        gamesRes.json(),
+        configRes.ok ? configRes.json() : Promise.resolve(null)
+      ]);
+
+      // Atualizacao em lote
+      setTeams(teamsData);
+      setGames(gamesData);
+      if(configData) setConfig(configData);
+      
     } catch (error) {
       toast({ title: "Erro", description: "Falha ao carregar dados.", variant: "destructive" });
     } finally {
@@ -141,31 +156,24 @@ const Championship = () => {
     }
   }
 
-  useEffect(() => {
-    if (isFullyFinished && !hasSeenPopup) { setShowChampionPopup(true); setHasSeenPopup(true); }
-  }, [isFullyFinished, hasSeenPopup]);
+  // Detecta o lider atual para forcar a reatividade do pop-up caso o campeao mude numa edicao
+  const currentLeaderName = podium.first?.name_player;
 
   useEffect(() => {
-    const autoGenerateKnockout = async () => {
-      if (isLeagueFinished && config.type !== 'LEAGUE' && knockoutGames.length === 0 && !isAutoConsolidating) {
-        setIsAutoConsolidating(true);
-        toast({ title: "Fase inicial concluida!", description: "Gerando cruzamentos do Mata-Mata..." });
-        try {
-          await fetch(`${API_URL}/GAMES/MATA-MATA`, { 
-            method: "POST", headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ formato: config.knockoutFormat, size: config.knockoutTeams, logic: config.seedingLogic, hasThirdPlace: config.hasThirdPlace }) 
-          });
-          fetchData();
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setIsAutoConsolidating(false);
-        }
-      }
-    };
-    autoGenerateKnockout();
-  }, [isLeagueFinished, knockoutGames.length, config.type, isAutoConsolidating, config, toast]);
-  
+    if (isFullyFinished && !hasSeenPopup) { 
+      setShowChampionPopup(true); 
+      setHasSeenPopup(true); 
+    }
+  }, [isFullyFinished, hasSeenPopup]);
+
+  // Efeito adicional para resetar o estado do pop-up se o lider da tabela mudar com o campeonato encerrado
+  useEffect(() => {
+    if (isFullyFinished) {
+      setHasSeenPopup(false);
+      setShowChampionPopup(true);
+    }
+  }, [currentLeaderName, isFullyFinished]);
+
   const getValidationError = () => {
     if (totalTeams < 2) return "É necessario pelo menos 2 equipes para jogar.";
     if (config.type.includes('GROUPS') && totalTeams < config.groupsCount * 2) return `Impossivel formar ${config.groupsCount} grupos.`;
@@ -196,10 +204,30 @@ const Championship = () => {
 
       toast({ title: "Sucesso!", description: "Novo campeonato gerado com os elencos atuais!" });
       setShowAdminPanel(false); setHasSeenPopup(false); 
-      fetchData();
+      await fetchData();
       setActiveTab(config.type === 'KNOCKOUT' ? "bracket" : "matches");
     } catch (error: any) {
       toast({ title: "Geracao cancelada", description: error.message || "Erro.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Funcao explicita para gerar os cruzamentos do mata-mata
+  const handleGenerateKnockoutPhase = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch(`${API_URL}/GAMES/MATA-MATA`, { 
+        method: "POST", headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ formato: config.knockoutFormat, size: config.knockoutTeams, logic: config.seedingLogic, hasThirdPlace: config.hasThirdPlace }) 
+      });
+      if (!res.ok) throw new Error("Falha ao gerar arvore do Mata-Mata.");
+      
+      toast({ title: "Sucesso!", description: "Mata-Mata gerado e pronto para disputa!" });
+      await fetchData();
+      setActiveTab("bracket");
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Falha ao gerar o mata-mata.", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -254,66 +282,109 @@ const Championship = () => {
         </div>
       </div>
 
-      {showChampionPopup && isFullyFinished && podium.first && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4">
-          <div className="bg-background/95 border border-border/50 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.15)] w-full max-w-2xl overflow-hidden relative">
-            <div className="p-6 md:p-10 text-center relative z-10">
-              <Crown className="h-14 w-14 text-neon-yellow drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] mx-auto mb-5 animate-bounce" />
-              <h2 className="text-3xl font-display font-black text-foreground uppercase tracking-tight mb-2">Fim de jogo</h2>
-              <p className="text-sm text-muted-foreground">O campeonato <strong>{cupName}</strong> foi concluido.</p>
+      {/* POPUP DE CAMPEÃO (PÓDIO) RENDEREZADO VIA PORTAL NO BODY */}
+      {showChampionPopup && isFullyFinished && podium.first && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md animate-fade-in p-4">
+          <div className="bg-background/95 border border-border/40 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.1)] w-full max-w-2xl overflow-hidden relative">
+            <div className="p-8 md:p-12 text-center relative z-10">
+              <Crown className="h-16 w-16 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)] mx-auto mb-6 animate-bounce" />
+              <h2 className="text-3xl font-display font-bold text-foreground tracking-tight mb-2">Fim de campeonato</h2>
+              <p className="text-sm text-muted-foreground">O torneio <strong>{cupName}</strong> foi concluído com sucesso.</p>
               
-              <div className="flex items-end justify-center gap-3 sm:gap-6 my-10 h-40 w-full overflow-hidden">
+              <div className="flex items-end justify-center gap-3 sm:gap-6 my-12 h-44 w-full px-4">
+                {/* 2º LUGAR */}
                 {podium.second && (
-                  <div className="flex flex-col items-center animate-fade-in opacity-80 flex-1 max-w-[140px]" style={{ animationDelay: '200ms' }}>
-                    <span className="text-[10px] font-bold text-muted-foreground mb-2">2º LUGAR</span>
-                    <span className="font-bold text-sm text-gray-300 text-center break-words w-full px-1">{podium.second.name_player}</span>
-                    <div className="w-full h-16 border-t-2 border-l-2 border-r-2 border-gray-600/50 mt-2 rounded-t-lg bg-gray-800/20"></div>
+                  <div className="flex flex-col items-center animate-fade-in opacity-90 flex-1 max-w-[140px]" style={{ animationDelay: '200ms' }}>
+                    <span className="text-[10px] font-black text-slate-400 tracking-widest mb-2 uppercase">2º Lugar</span>
+                    <span className="font-bold text-sm text-foreground text-center break-words w-full px-1 mb-2">{podium.second.name_player}</span>
+                    <div className="w-full h-16 border-t-2 border-l-2 border-r-2 border-slate-400/40 rounded-t-lg bg-slate-400/5 shadow-[0_-5px_15px_rgba(148,163,184,0.1)]"></div>
                   </div>
                 )}
+
+                {/* 1º LUGAR */}
                 <div className="flex flex-col items-center animate-fade-in z-10 flex-1 max-w-[160px]" style={{ animationDelay: '600ms' }}>
-                  <span className="text-xs font-black text-neon-yellow tracking-widest mb-2 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] bg-transparent">CAMPEAO</span>
-                  <span className="font-black text-lg sm:text-xl text-foreground uppercase text-center break-words w-full px-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{podium.first.name_player}</span>
-                  <div className="w-full h-24 border-t-2 border-l-2 border-r-2 border-neon-yellow/50 mt-2 rounded-t-lg bg-yellow-900/10 shadow-[0_-5px_15px_rgba(250,204,21,0.15)]"></div>
+                  <span className="text-xs font-black text-yellow-400 tracking-[0.2em] mb-2 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)] uppercase">Campeão</span>
+                  <span className="font-black text-lg sm:text-xl text-foreground text-center break-words w-full px-1 mb-2">{podium.first.name_player}</span>
+                  <div className="w-full h-28 border-t-2 border-l-2 border-r-2 border-yellow-400/50 rounded-t-lg bg-yellow-400/5 shadow-[0_-5px_20px_rgba(250,204,21,0.2)]"></div>
                 </div>
+
+                {/* 3º LUGAR */}
                 {podium.third && (
-                  <div className="flex flex-col items-center animate-fade-in opacity-80 flex-1 max-w-[140px]" style={{ animationDelay: '400ms' }}>
-                    <span className="text-[10px] font-bold text-muted-foreground mb-2">3º LUGAR</span>
-                    <span className="font-bold text-sm text-amber-600/80 text-center break-words w-full px-1">{podium.third.name_player}</span>
-                    <div className="w-full h-12 border-t-2 border-l-2 border-r-2 border-amber-900/50 mt-2 rounded-t-lg bg-amber-900/10"></div>
+                  <div className="flex flex-col items-center animate-fade-in opacity-90 flex-1 max-w-[140px]" style={{ animationDelay: '400ms' }}>
+                    <span className="text-[10px] font-black text-amber-600 tracking-widest mb-2 uppercase">3º Lugar</span>
+                    <span className="font-bold text-sm text-foreground text-center break-words w-full px-1 mb-2">{podium.third.name_player}</span>
+                    <div className="w-full h-12 border-t-2 border-l-2 border-r-2 border-amber-600/40 rounded-t-lg bg-amber-600/5 shadow-[0_-5px_15px_rgba(217,119,6,0.1)]"></div>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
-                <button onClick={() => setShowChampionPopup(false)} className="px-6 py-2.5 rounded-lg font-bold text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-colors border border-border/50">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+                <button 
+                  onClick={() => setShowChampionPopup(false)} 
+                  className="px-8 py-3 rounded-xl font-bold text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-all border border-border/50"
+                >
                   Voltar
                 </button>
-                <button onClick={handleFinishCup} disabled={isFinishing} className="bg-primary text-black px-8 py-2.5 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(250,204,21,0.4)]">
-                  {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} Encerrar campeonato
+                <button 
+                  onClick={handleFinishCup} 
+                  disabled={isFinishing} 
+                  className="bg-primary text-primary-foreground px-10 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                >
+                  {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} 
+                  Encerrar campeonato
                 </button>
               </div>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* CAIXA DE RESUMO DO CAMPEÃO (BANNER NA TELA) */}
+      {isFullyFinished && podium.first && !showChampionPopup && (
+        <div className="card-elevated border-border/60 bg-muted/5 backdrop-blur-sm p-5 flex flex-col sm:flex-row items-center justify-between gap-6 animate-fade-in shadow-[0_0_20px_rgba(255,255,255,0.05)]">
+          <div className="flex items-center gap-5">
+            <div className="p-3 rounded-full bg-primary/10 border border-primary/20">
+              <Trophy className="h-8 w-8 text-foreground drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-black">Campeonato Concluído</p>
+              <p className="font-display text-lg text-foreground">
+                O vencedor é <span className="font-bold text-primary">{podium.first.name_player}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <button 
+              onClick={() => setShowChampionPopup(true)} 
+              className="w-full sm:w-auto px-8 py-3 bg-secondary text-foreground border border-border/50 rounded-xl text-sm font-bold hover:bg-secondary/80 transition-all"
+            >
+              Ver pódio
+            </button>
+            <button 
+              onClick={handleFinishCup} 
+              disabled={isFinishing} 
+              className="w-full sm:w-auto px-8 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2"
+            >
+              {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} 
+              Guardar histórico
+            </button>
           </div>
         </div>
       )}
 
-      {isFullyFinished && podium.first && !showChampionPopup && (
-        <div className="card-elevated border-neon-yellow/50 bg-neon-yellow/5 backdrop-blur-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in shadow-[0_0_15px_rgba(250,204,21,0.05)]">
+      {isLeagueFinished && !hasKnockout && config.type !== 'LEAGUE' && (
+        <div className="card-elevated border-primary/50 bg-primary/5 backdrop-blur-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in shadow-[0_0_15px_rgba(255,255,255,0.05)]">
           <div className="flex items-center gap-4">
-            <Trophy className="h-10 w-10 text-neon-yellow drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
+            <GitBranch className="h-10 w-10 text-primary drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Torneio concluido</p>
-              <p className="font-display text-base text-foreground">O campeao é <span className="font-bold text-neon-yellow drop-shadow-sm">{podium.first.name_player}</span>.</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Fase inicial concluída</p>
+              <p className="font-display text-base text-foreground">A tabela está definida. É hora dos playoffs.</p>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            <button onClick={() => setShowChampionPopup(true)} className="w-full sm:w-auto px-6 py-2.5 bg-foreground text-background border-0 rounded-lg text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-              Ver pódio
-            </button>
-            <button onClick={handleFinishCup} disabled={isFinishing} className="w-full sm:w-auto px-6 py-2.5 bg-neon-yellow text-black border-0 rounded-lg text-sm font-bold hover:bg-yellow-400 transition-all shadow-[0_0_15px_rgba(250,204,21,0.4)] flex items-center justify-center gap-2">
-              {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} Guardar historico
-            </button>
-          </div>
+          <button onClick={handleGenerateKnockoutPhase} disabled={isGenerating} className="w-full sm:w-auto px-6 py-2.5 bg-primary text-primary-foreground border-0 rounded-lg text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(255,255,255,0.4)] flex items-center justify-center gap-2">
+            {isGenerating ? <Loader2 className="animate-spin h-4 w-4"/> : <Shuffle className="h-4 w-4"/>} Gerar Mata-Mata
+          </button>
         </div>
       )}
 

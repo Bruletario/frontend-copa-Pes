@@ -29,7 +29,6 @@ const LiveScore = () => {
   const [penaltyPrompt, setPenaltyPrompt] = useState<{match: GameData, s1: number, s2: number} | null>(null);
 
   const [config, setConfig] = useState<any>({});
-  const [isAutoConsolidating, setIsAutoConsolidating] = useState(false);
 
   const { toast } = useToast();
 
@@ -40,9 +39,16 @@ const LiveScore = () => {
         fetch(`${API_URL}/GAMES`),
         fetch(`${API_URL}/CONFIGS`) 
       ]);
-      setTeams(await teamsRes.json());
-      setGames(await gamesRes.json());
-      if(configRes.ok) setConfig(await configRes.json());
+      
+      const [teamsData, gamesData, configData] = await Promise.all([
+        teamsRes.json(),
+        gamesRes.json(),
+        configRes.ok ? configRes.json() : Promise.resolve(null)
+      ]);
+
+      setTeams(teamsData);
+      setGames(gamesData);
+      if(configData) setConfig(configData);
     } catch (error) {
       toast({ title: "Erro", description: "Nao foi possivel carregar os jogos.", variant: "destructive" });
     } finally {
@@ -211,28 +217,6 @@ const LiveScore = () => {
       
       podium.first = teams.find(t => t.id === winnerId) || sortedTeams[0];
   }
-
-  // AUTO-GERACAO DO MATA-MATA
-  useEffect(() => {
-    const autoGenerateKnockout = async () => {
-      if (isLeagueFinished && config.type !== 'LEAGUE' && knockoutGames.length === 0 && !isAutoConsolidating) {
-        setIsAutoConsolidating(true);
-        toast({ title: "Fase Inicial Concluida!", description: "Sorteando chaveamento do Mata-Mata..." });
-        try {
-          await fetch(`${API_URL}/GAMES/MATA-MATA`, { 
-            method: "POST", headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ formato: config.knockoutFormat, size: config.knockoutTeams, logic: config.seedingLogic, hasThirdPlace: config.hasThirdPlace }) 
-          });
-          fetchData();
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setIsAutoConsolidating(false);
-        }
-      }
-    };
-    autoGenerateKnockout();
-  }, [isLeagueFinished, knockoutGames.length, config.type, isAutoConsolidating, config, toast]);
 
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;

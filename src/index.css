@@ -133,3 +133,8 @@
     background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
   }
 }
+/* No index.css */
+.bracket-connector {
+   @apply border-primary/40 border-l-2 border-b-2 rounded-bl-lg;
+   /* Isso criará a "curva" da chave perfeitamente alinhada com os 88px do card */
+}

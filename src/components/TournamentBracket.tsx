@@ -9,7 +9,7 @@ interface TournamentBracketProps {
   config: any;
 }
 
-// Helper para agrupar as partidas em pares perfeitamente matemáticos
+// Helper para agrupar as partidas em pares matemáticos
 function chunkArray<T>(array: T[], size: number): T[][] {
   const result = [];
   for (let i = 0; i < array.length; i += size) {
@@ -17,14 +17,6 @@ function chunkArray<T>(array: T[], size: number): T[][] {
   }
   return result;
 }
-
-// Larguras muito maiores para aproveitar o espaço da tela
-const getColumnWidth = (matchCount: number) => {
-  if (matchCount >= 4) return "w-[220px] md:w-[250px]"; // Oitavas de Final
-  if (matchCount === 2) return "w-[240px] md:w-[270px]"; // Quartas de Final
-  if (matchCount === 1) return "w-[260px] md:w-[290px]"; // Semifinais
-  return "w-[220px]";
-};
 
 export function TournamentBracket({ games, teams, config }: TournamentBracketProps) {
   const getTeam = (id: number) => teams.find(t => t.id === id);
@@ -83,7 +75,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
           volta: isHomeAway ? {} : null
       }));
       
-      const firstTitle = numKnockout === 16 ? "Oitavas de Final" : numKnockout === 8 ? "Quartas de Final" : numKnockout === 4 ? "Semifinal" : "Grande Final";
+      const firstTitle = numKnockout === 16 ? "Oitavas" : numKnockout === 8 ? "Quartas" : numKnockout === 4 ? "Semis" : "Final";
       cols.push({ title: firstTitle, matches: [...matches] });
       currentRound += isHomeAway ? 2 : 1;
 
@@ -93,7 +85,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
             ida: { _ghost_t1: null, _ghost_t2: null, match_id: Math.random(), round: currentRound },
             volta: isHomeAway ? {} : null
         }));
-        const phaseTitle = prevGames === 8 ? "Oitavas de Final" : prevGames === 4 ? "Quartas de Final" : prevGames === 2 ? "Semifinal" : "Grande Final";
+        const phaseTitle = prevGames === 8 ? "Oitavas" : prevGames === 4 ? "Quartas" : prevGames === 2 ? "Semis" : "Final";
         cols.push({ title: phaseTitle, matches: fakeMatches });
         currentRound += isHomeAway ? 2 : 1;
       }
@@ -116,7 +108,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
                 return { ida, volta };
             });
             
-            const title = phaseGamesIda.length === 1 ? "Grande Final" : phaseGamesIda.length === 2 ? "Semifinal" : phaseGamesIda.length === 4 ? "Quartas de Final" : phaseGamesIda.length === 8 ? "Oitavas de Final" : "Eliminatórias";
+            const title = phaseGamesIda.length === 1 ? "Final" : phaseGamesIda.length === 2 ? "Semis" : phaseGamesIda.length === 4 ? "Quartas" : phaseGamesIda.length === 8 ? "Oitavas" : "Fase";
             cols.push({ title, matches });
         }
         currentRound += isHomeAway ? 2 : 1;
@@ -140,55 +132,56 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
   });
 
   return (
-    <div className="relative w-[96vw] md:w-[98vw] left-1/2 -translate-x-1/2 mt-4 min-h-[60vh] flex flex-col items-center justify-center">
+    // Breakout de tela inteira: w-[100vw] e translate forçam ignorar bordas do layout pai
+    <div className="relative w-[100vw] left-1/2 -translate-x-1/2 h-[100vh] min-h-[700px] flex flex-col items-center justify-center overflow-hidden bg-background/50 pt-2 pb-6">
       
       {isProjection && (
-         <div className="bg-primary/10 border border-primary/20 text-primary px-4 py-3 rounded-lg flex items-start gap-3 w-fit shadow-sm backdrop-blur-md relative z-20 mb-6 mx-auto">
-            <Zap className="h-5 w-5 mt-0.5 animate-pulse-neon" />
-            <div>
-              <p className="font-bold text-sm">Projeção Dinâmica</p>
-              <p className="text-xs opacity-80">A árvore oficial será gerada automaticamente.</p>
+         <div className="bg-primary/10 border border-primary/20 text-primary px-6 py-2 rounded-lg flex items-center gap-3 shadow-sm backdrop-blur-md shrink-0 mb-4">
+            <Zap className="h-5 w-5 animate-pulse-neon" />
+            <div className="flex flex-col">
+              <span className="font-bold text-sm leading-tight">Projeção Dinâmica</span>
+              <span className="text-[10px] opacity-80 leading-tight">Árvore oficial gerada no início.</span>
             </div>
          </div>
       )}
 
-      <div className="w-full overflow-x-auto custom-scrollbar flex justify-start 2xl:justify-center items-center py-8">
+      {/* Grid principal do mata-mata */}
+      <div className="w-full flex-1 flex justify-center items-stretch overflow-hidden px-1 md:px-2 gap-0">
         
-        <div className="flex items-stretch w-max mx-auto h-[600px] md:h-[750px] gap-0">
-          
           {/* =================== LADO ESQUERDO =================== */}
           {leftCols.map((col, colIndex) => {
              const pairs = chunkArray(col.matches, 2);
-             const colWidth = getColumnWidth(col.matches.length);
              
              return (
-              <div key={`left-${colIndex}`} className={`flex flex-col h-full ${colWidth} px-6 relative shrink-0 transition-all duration-300`}>
-                <div className="flex-1 flex flex-col w-full relative">
-                   {pairs.map((pair, pairIndex) => (
-                      <div key={pairIndex} className="flex-1 flex flex-col relative w-full justify-around">
-                          
-                          {/* O Titulo agora flutua rigidamente acima do PRIMEIRO jogo da coluna */}
-                          {pairIndex === 0 && (
-                            <div className="absolute -top-7 left-0 right-0 font-display text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider text-center font-bold">
-                               {col.title}
-                            </div>
-                          )}
+              <div key={`left-${colIndex}`} className="flex-1 flex flex-col h-full shrink-0">
+                {/* Título Dedicado (Não buga mais) */}
+                <div className="h-8 lg:h-10 flex items-center justify-center shrink-0 mb-2">
+                   <span className="font-display text-[10px] md:text-xs lg:text-sm text-muted-foreground uppercase tracking-widest font-bold text-center drop-shadow-sm">
+                      {col.title}
+                   </span>
+                </div>
 
+                <div className="flex-1 flex flex-col w-full">
+                   {pairs.map((pair, pairIndex) => (
+                      // Wrapper do par com padding exato para matemática das linhas
+                      <div key={pairIndex} className="flex-1 flex flex-col relative w-full justify-around px-2 md:px-3 lg:px-4 py-1 lg:py-2">
+                          
+                          {/* Conectores exatos baseados no padding */}
                           {pair.length === 2 && (
                               <>
-                                  <div className="absolute right-[-24px] w-[24px] top-[25%] bottom-[25%] border-r-2 border-y-2 border-primary/30 rounded-r-lg pointer-events-none z-0" />
-                                  <div className="absolute right-[-48px] w-[24px] top-1/2 border-t-2 border-primary/30 pointer-events-none z-0" />
+                                  <div className="absolute right-0 top-[25%] bottom-[25%] w-2 md:w-3 lg:w-4 border-r-2 border-y-2 border-primary/30 rounded-r-lg z-0" />
+                                  <div className="absolute -right-2 md:-right-3 lg:-right-4 top-1/2 w-2 md:w-3 lg:w-4 border-t-2 border-primary/30 z-0" />
                               </>
                           )}
                           {pair.length === 1 && (
-                              <div className="absolute right-[-48px] w-[48px] top-1/2 border-t-2 border-primary/30 pointer-events-none z-0" />
+                              <div className="absolute -right-2 md:-right-3 lg:-right-4 top-1/2 w-4 md:w-6 lg:w-8 border-t-2 border-primary/30 z-0" />
                           )}
 
-                          <div className="flex flex-col justify-center w-full relative z-10 py-3">
+                          <div className="flex-1 flex flex-col justify-center w-full relative z-10 py-1">
                               <BracketMatchCard matchObj={pair[0]} isFinal={false} getTeam={getTeam} />
                           </div>
                           {pair.length > 1 && (
-                              <div className="flex flex-col justify-center w-full relative z-10 py-3">
+                              <div className="flex-1 flex flex-col justify-center w-full relative z-10 py-1">
                                   <BracketMatchCard matchObj={pair[1]} isFinal={false} getTeam={getTeam} />
                               </div>
                           )}
@@ -200,77 +193,84 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
           })}
 
           {/* =================== CENTRO (FINAL E CAMPEÃO) =================== */}
-          <div className="flex flex-col items-center justify-center h-full px-8 shrink-0 min-w-[280px] md:min-w-[360px] relative z-20">
-            <div className="flex flex-col items-center mb-8 w-full">
-              <img src="https://cdn-icons-png.flaticon.com/512/3112/3112946.png" alt="Troféu de Campeão" className="w-20 h-20 md:w-32 md:h-32 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] mb-4 hover:scale-110 transition-transform" />
-              {championTeam ? (
-                <div className="bg-background/95 border border-primary/50 px-6 py-3 rounded-xl shadow-[0_0_20px_rgba(250,204,21,0.15)] text-center flex flex-col items-center w-full max-w-[260px] animate-fade-in backdrop-blur-sm">
-                  <span className="font-display font-black text-lg md:text-2xl text-primary uppercase truncate w-full drop-shadow-md">{championTeam.name_player}</span>
-                  <span className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-widest mt-1">Campeão Oficial</span>
-                </div>
-              ) : (
-                <div className="bg-muted/30 border border-dashed border-border px-6 py-3 rounded-xl text-center w-full max-w-[200px]">
-                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">A Definir</span>
-                </div>
-              )}
+          <div className="flex-[1.2] lg:flex-[1.5] flex flex-col h-full relative z-20 shrink-0">
+            <div className="h-8 lg:h-10 flex items-center justify-center shrink-0 mb-2">
+                <span className="font-display text-xs md:text-sm lg:text-base text-primary uppercase tracking-widest font-black flex items-center gap-2 drop-shadow-sm">
+                   <Zap className="w-3 h-3 md:w-4 md:h-4" /> {finalMatch?.title || "Grande Final"} <Zap className="w-3 h-3 md:w-4 md:h-4" />
+                </span>
             </div>
 
-            {finalMatch && (
-              <div className="w-full relative px-2 mt-4">
-                 <h4 className="absolute -top-7 left-0 right-0 font-display text-xs md:text-sm text-primary uppercase tracking-widest text-center font-black flex items-center justify-center gap-2 drop-shadow-sm">
-                    <Zap className="w-4 h-4" /> {finalMatch.title} <Zap className="w-4 h-4" />
-                 </h4>
-                 <BracketMatchCard matchObj={finalMatch.matches[0]} isFinal={true} getTeam={getTeam} />
-              </div>
-            )}
-
-            {!isProjection && thirdPlaceMatch && (
-              <div className="w-full max-w-[280px] mt-12 pt-6 border-t border-border/30 relative animate-fade-in">
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-background px-4">
-                  <div className="flex items-center justify-center gap-2">
-                     <Medal className="h-4 w-4 text-amber-500 drop-shadow-sm" />
-                     <h3 className="font-display font-black text-amber-500 uppercase tracking-widest text-[10px] md:text-xs">3º Lugar (Bronze)</h3>
+            <div className="flex-1 flex flex-col items-center justify-center w-full px-2 md:px-3 lg:px-4">
+              
+              {/* Área do Campeão (Empurra o card da final para o centro geométrico) */}
+              <div className="flex flex-col items-center justify-end flex-1 w-full pb-4 lg:pb-8">
+                <img src="https://cdn-icons-png.flaticon.com/512/3112/3112946.png" alt="Troféu" className="w-20 h-20 md:w-28 md:h-28 lg:w-36 lg:h-36 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] mb-3 lg:mb-4 hover:scale-110 transition-transform" />
+                {championTeam ? (
+                  <div className="bg-background/95 border border-primary/50 px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-[0_0_20px_rgba(250,204,21,0.2)] text-center flex flex-col items-center w-full max-w-[90%] backdrop-blur-md">
+                    <span className="font-display font-black text-lg md:text-2xl lg:text-3xl text-primary uppercase truncate w-full drop-shadow-md">{championTeam.name_player}</span>
+                    <span className="text-[9px] md:text-xs text-muted-foreground uppercase tracking-widest mt-0.5">Campeão Oficial</span>
                   </div>
-                </div>
-                <div className="mt-4">
-                   <BracketMatchCard matchObj={{ ida: thirdPlaceMatch, volta: null }} isFinal={false} getTeam={getTeam} isBronze={true} />
-                </div>
+                ) : (
+                  <div className="bg-muted/30 border border-dashed border-border px-6 py-2 lg:py-3 rounded-xl text-center w-full max-w-[200px]">
+                    <span className="text-[10px] md:text-xs text-muted-foreground uppercase font-bold tracking-wider">A Definir</span>
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Card da Final */}
+              {finalMatch && (
+                <div className="w-full shrink-0 relative z-10">
+                   <BracketMatchCard matchObj={finalMatch.matches[0]} isFinal={true} getTeam={getTeam} />
+                </div>
+              )}
+
+              {/* Área de 3º Lugar */}
+              <div className="flex flex-col items-center justify-start flex-1 w-full pt-6 lg:pt-10 relative">
+                {!isProjection && thirdPlaceMatch && (
+                  <div className="w-full max-w-[90%] border-t border-border/30 pt-6 relative animate-fade-in">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-background/90 px-3 py-1 rounded-full border border-border/20 backdrop-blur-sm flex items-center gap-1.5">
+                       <Medal className="h-3 w-3 lg:h-4 lg:w-4 text-amber-500" />
+                       <span className="font-display font-black text-amber-500 uppercase tracking-widest text-[9px] lg:text-[11px]">3º Lugar</span>
+                    </div>
+                    <BracketMatchCard matchObj={{ ida: thirdPlaceMatch, volta: null }} isFinal={false} getTeam={getTeam} isBronze={true} />
+                  </div>
+                )}
+              </div>
+
+            </div>
           </div>
 
           {/* =================== LADO DIREITO (Invertido Visualmente) =================== */}
           {[...rightCols].reverse().map((col, colIndex) => {
              const pairs = chunkArray(col.matches, 2);
-             const colWidth = getColumnWidth(col.matches.length);
              
              return (
-              <div key={`right-${colIndex}`} className={`flex flex-col h-full ${colWidth} px-6 relative shrink-0 transition-all duration-300`}>
-                <div className="flex-1 flex flex-col w-full relative">
-                   {pairs.map((pair, pairIndex) => (
-                      <div key={pairIndex} className="flex-1 flex flex-col relative w-full justify-around">
-                          
-                          {pairIndex === 0 && (
-                            <div className="absolute -top-7 left-0 right-0 font-display text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider text-center font-bold">
-                               {col.title}
-                            </div>
-                          )}
+              <div key={`right-${colIndex}`} className="flex-1 flex flex-col h-full shrink-0">
+                <div className="h-8 lg:h-10 flex items-center justify-center shrink-0 mb-2">
+                   <span className="font-display text-[10px] md:text-xs lg:text-sm text-muted-foreground uppercase tracking-widest font-bold text-center drop-shadow-sm">
+                      {col.title}
+                   </span>
+                </div>
 
+                <div className="flex-1 flex flex-col w-full">
+                   {pairs.map((pair, pairIndex) => (
+                      <div key={pairIndex} className="flex-1 flex flex-col relative w-full justify-around px-2 md:px-3 lg:px-4 py-1 lg:py-2">
+                          
                           {pair.length === 2 && (
                               <>
-                                  <div className="absolute left-[-24px] w-[24px] top-[25%] bottom-[25%] border-l-2 border-y-2 border-primary/30 rounded-l-lg pointer-events-none z-0" />
-                                  <div className="absolute left-[-48px] w-[24px] top-1/2 border-t-2 border-primary/30 pointer-events-none z-0" />
+                                  <div className="absolute left-0 top-[25%] bottom-[25%] w-2 md:w-3 lg:w-4 border-l-2 border-y-2 border-primary/30 rounded-l-lg z-0" />
+                                  <div className="absolute -left-2 md:-left-3 lg:-left-4 top-1/2 w-2 md:w-3 lg:w-4 border-t-2 border-primary/30 z-0" />
                               </>
                           )}
                           {pair.length === 1 && (
-                              <div className="absolute left-[-48px] w-[48px] top-1/2 border-t-2 border-primary/30 pointer-events-none z-0" />
+                              <div className="absolute -left-2 md:-left-3 lg:-left-4 top-1/2 w-4 md:w-6 lg:w-8 border-t-2 border-primary/30 z-0" />
                           )}
 
-                          <div className="flex flex-col justify-center w-full relative z-10 py-3">
+                          <div className="flex-1 flex flex-col justify-center w-full relative z-10 py-1">
                               <BracketMatchCard matchObj={pair[0]} isFinal={false} getTeam={getTeam} />
                           </div>
                           {pair.length > 1 && (
-                              <div className="flex flex-col justify-center w-full relative z-10 py-3">
+                              <div className="flex-1 flex flex-col justify-center w-full relative z-10 py-1">
                                   <BracketMatchCard matchObj={pair[1]} isFinal={false} getTeam={getTeam} />
                               </div>
                           )}
@@ -281,13 +281,12 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
              );
           })}
 
-        </div>
       </div>
     </div>
   );
 }
 
-// O CARD COMPACTO: Badge ejetada para fora, mantendo a altura exata h-[76px] para não quebrar a linha flex
+// O CARD: Focado em esticar fluidamente no flex, sem quebrar.
 function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
   const { ida, volta } = matchObj;
   const isHomeAway = !!volta && Object.keys(volta).length > 0;
@@ -307,7 +306,6 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
           s1Main = ida?.status_game !== 'Pendente' ? ida?.goals_home : null;
           s2Main = ida?.status_game !== 'Pendente' ? ida?.goals_out : null;
       } else {
-          // Ida finalizou, salvamos os scores como "Sub" (parenteses)
           s1Sub = ida.goals_home; 
           s2Sub = ida.goals_out;
           
@@ -335,76 +333,72 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
       }
   }
 
-  const badgeText = isHomeAway ? (!isIdaFinished ? "JOGO DE IDA" : "VOLTA (IDA)") : "";
+  const badgeText = isHomeAway ? (!isIdaFinished ? "IDA" : "VOLTA") : "";
 
-  let cardStyles = "border-border/50 hover:border-primary/30 transition-colors";
+  let cardStyles = "border-border/50 hover:border-primary/50 transition-all shadow-md bg-card/95";
   if (isFinal && (isIdaFinished || isVoltaFinished)) {
-      cardStyles = "border-primary shadow-[0_0_15px_rgba(250,204,21,0.15)] ring-1 ring-primary/50";
+      cardStyles = "border-primary shadow-[0_0_20px_rgba(250,204,21,0.2)] ring-2 ring-primary/50 bg-background";
   } else if (isFinal) {
-      cardStyles = "border-border/80 shadow-[0_0_15px_rgba(255,255,255,0.05)]";
+      cardStyles = "border-border/80 shadow-[0_0_20px_rgba(255,255,255,0.08)] ring-1 ring-border bg-background";
   } else if (isBronze) {
-      cardStyles = "border-amber-700/50 shadow-[0_0_15px_rgba(217,119,6,0.1)] ring-1 ring-amber-700/30 bg-amber-950/10";
+      cardStyles = "border-amber-700/60 shadow-[0_0_20px_rgba(217,119,6,0.15)] ring-1 ring-amber-700/50 bg-amber-950/20";
   }
 
   if (isGhost) {
     return (
-      <div className="w-full h-[76px] relative">
-        <div className={`w-full h-full flex flex-col justify-center card-elevated overflow-hidden border-dashed border-border/50 opacity-40 bg-transparent ${isFinal ? "shadow-[0_0_10px_rgba(255,255,255,0.05)] border-border/80" : ""}`}>
-          <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t1_seed} />
-          <div className="border-t border-border/30" />
-          <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t2_seed} />
-        </div>
+      <div className="w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] relative flex flex-col justify-center rounded-xl overflow-hidden border-2 border-dashed border-border/40 opacity-50 bg-transparent">
+        <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t1_seed} />
+        <div className="border-t-2 border-dashed border-border/30" />
+        <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t2_seed} />
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[76px] relative">
-      {/* O badge agora flutua acima do card e não o afeta dimensionalmente */}
+    <div className={`w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] rounded-xl overflow-hidden backdrop-blur-md flex flex-col justify-center border-2 relative ${cardStyles}`}>
+      
+      {/* Badge Interno Elegante */}
       {badgeText && (
-         <div className="absolute -top-4 left-0 right-0 text-center text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-muted-foreground drop-shadow-sm">
+         <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-background px-3 py-0.5 rounded-b-md text-[7px] lg:text-[9px] font-bold uppercase tracking-widest text-muted-foreground z-10 border-x border-b border-border/40 shadow-sm">
            {badgeText}
          </div>
       )}
       
-      <div className={`w-full h-full card-elevated overflow-hidden bg-background/95 backdrop-blur-sm flex flex-col relative justify-center ${cardStyles}`}>
-        <div className="flex flex-col h-full justify-center pt-1">
-          <MatchRow player={t1} score={s1Main} subScore={s1Sub} isWinner={homeWins} isPenaltyWinner={isTie && pWinner === t1?.id} />
-          <div className="border-t border-border/30 w-full" />
-          <MatchRow player={t2} score={s2Main} subScore={s2Sub} isWinner={outWins} isPenaltyWinner={isTie && pWinner === t2?.id} />
-        </div>
-      </div>
+      <MatchRow player={t1} score={s1Main} subScore={s1Sub} isWinner={homeWins} isPenaltyWinner={isTie && pWinner === t1?.id} />
+      <div className="border-t border-border/40 w-full" />
+      <MatchRow player={t2} score={s2Main} subScore={s2Sub} isWinner={outWins} isPenaltyWinner={isTie && pWinner === t2?.id} />
     </div>
   );
 }
 
+// MATCH ROW: Componente das equipes renderizando escudos e nomes grandes
 function MatchRow({ player, score, subScore, isWinner = false, seed, isPenaltyWinner }: any) {
   return (
-    <div className={`flex flex-1 items-center justify-between px-2 md:px-3 py-1 transition-colors ${isWinner ? "bg-primary/10" : ""}`}>
-      <div className="flex items-center gap-2 min-w-0">
+    <div className={`flex flex-1 items-center justify-between px-2 md:px-3 lg:px-4 py-1.5 lg:py-2 transition-colors ${isWinner ? "bg-primary/15" : ""}`}>
+      <div className="flex items-center gap-2 lg:gap-3 min-w-0">
         {player ? (
-          <Shield className="h-3 w-3 md:h-4 md:w-4 shrink-0 drop-shadow-md" style={{ color: player.color }} />
+          <Shield className="h-5 w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 shrink-0 drop-shadow-md" style={{ color: player.color }} />
         ) : (
-          <div className="h-3 w-3 md:h-4 md:w-4 shrink-0 rounded-full border border-dashed border-muted-foreground/50 flex items-center justify-center font-bold text-[7px] text-muted-foreground">{seed || "?"}</div>
+          <div className="h-5 w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 shrink-0 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center font-bold text-[9px] lg:text-xs text-muted-foreground">{seed || "?"}</div>
         )}
         <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] md:text-xs font-display font-bold leading-none truncate max-w-[100px] md:max-w-[140px] ${isWinner ? "text-primary" : player ? "text-foreground" : "text-muted-foreground"}`}>
+          <div className="flex items-center gap-1.5 lg:gap-2">
+            <span className={`text-xs md:text-sm lg:text-base font-display font-black leading-none truncate max-w-[60px] md:max-w-[100px] lg:max-w-[160px] ${isWinner ? "text-primary drop-shadow-sm" : player ? "text-foreground" : "text-muted-foreground"}`}>
               {player?.name_player || "A Definir"}
             </span>
             {isPenaltyWinner && (
-               <span className="text-[6px] text-blue-400 border border-blue-400/30 bg-blue-400/10 px-1 rounded tracking-widest uppercase shadow-sm">Pênaltis</span>
+               <span className="text-[7px] lg:text-[9px] text-blue-400 border border-blue-400/40 bg-blue-400/10 px-1 py-0.5 rounded tracking-widest uppercase shadow-sm font-bold">Pên</span>
             )}
           </div>
-          {player && <span className="text-[7px] md:text-[8px] text-muted-foreground mt-0.5 truncate max-w-[100px] md:max-w-[140px]">{player.team_player}</span>}
+          {player && <span className="text-[8px] lg:text-[10px] font-medium text-muted-foreground/80 mt-0.5 truncate max-w-[60px] md:max-w-[100px] lg:max-w-[160px]">{player.team_player}</span>}
         </div>
       </div>
       
-      <div className="flex items-center gap-1.5 shrink-0 pl-2">
+      <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 pl-2">
         {subScore !== null && (
-           <span className="text-[9px] md:text-[10px] text-muted-foreground/70 font-bold">({subScore})</span>
+           <span className="text-[9px] lg:text-[11px] text-muted-foreground/70 font-bold">({subScore})</span>
         )}
-        <span className={`font-display font-black text-xs md:text-sm ${isWinner ? "text-primary" : "text-muted-foreground"}`}>
+        <span className={`font-display font-black text-sm md:text-base lg:text-xl ${isWinner ? "text-primary drop-shadow-sm" : "text-foreground/80"}`}>
           {score !== null ? score : "-"}
         </span>
       </div>

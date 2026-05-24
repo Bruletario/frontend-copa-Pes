@@ -24,7 +24,7 @@
     --muted: 220 14% 14%;
     --muted-foreground: 215 12% 55%;
 
-    --accent: 200 100% 55%;
+    --accent: 0 0% 100%;
     --accent-foreground: 220 20% 7%;
 
     --destructive: 0 72% 51%;
@@ -46,7 +46,7 @@
     --sidebar-ring: 0 0% 95%;
 
     --neon-glow: 0 0% 95%;
-    --neon-blue: 200 100% 55%;
+    --neon-blue: 0 0% 100%; /* Mudado para branco puro */
     --neon-yellow: 50 100% 60%;
     --neon-red: 0 100% 60%;
     --surface-elevated: 220 16% 13%;
@@ -126,15 +126,14 @@
 
 @layer utilities {
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--neon-blue)) 100%);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%);
   }
 
   .gradient-surface {
     background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
   }
 }
-/* No index.css */
+
 .bracket-connector {
    @apply border-primary/40 border-l-2 border-b-2 rounded-bl-lg;
-   /* Isso criará a "curva" da chave perfeitamente alinhada com os 88px do card */
 }

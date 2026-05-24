@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { StandingsTable } from "@/components/StandingsTable";
 import { MatchInput } from "@/components/MatchInput";
@@ -74,12 +74,9 @@ const Championship = () => {
 
   useEffect(() => { 
     fetchData(); 
-    
-    // Polling: Atualiza a tela silenciosamente a cada 10 segundos
     const interval = setInterval(() => {
       fetchData();
     }, 10000);
-    
     return () => clearInterval(interval);
   }, []);
 
@@ -91,22 +88,26 @@ const Championship = () => {
   };
 
   const isTournamentRunning = games.length > 0;
-  const activeTeams = teams.filter(t => t.team_player !== "Sem Time");
+  
+  // Memoização Extrema para performance:
+  const activeTeams = useMemo(() => teams.filter(t => t.team_player !== "Sem Time"), [teams]);
   const totalTeams = activeTeams.length;
   
-  const sortedTeams = [...activeTeams].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    return (b.goals_score - b.goals_conceded) - (a.goals_score - a.goals_conceded);
-  });
+  const sortedTeams = useMemo(() => {
+    return [...activeTeams].sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      return (b.goals_score - b.goals_conceded) - (a.goals_score - a.goals_conceded);
+    });
+  }, [activeTeams]);
 
-  const leagueGames = games.filter(g => g.round < 90);
-  const knockoutGames = games.filter(g => g.round >= 90);
-
+  const leagueGames = useMemo(() => games.filter(g => g.round < 90), [games]);
+  const knockoutGames = useMemo(() => games.filter(g => g.round >= 90), [games]);
+  
   const hasLeague = leagueGames.length > 0;
   const isLeagueFinished = hasLeague && leagueGames.every(g => g.status_game === "Finalizado");
 
   const hasKnockout = knockoutGames.length > 0;
-  const mainBracketGames = knockoutGames.filter(g => g.round < 99);
+  const mainBracketGames = useMemo(() => knockoutGames.filter(g => g.round < 99), [knockoutGames]);
   
   const maxKnockoutRound = mainBracketGames.length > 0 ? Math.max(...mainBracketGames.map(g => g.round)) : 0;
   const finalMatch = mainBracketGames.find(g => g.round === maxKnockoutRound);
@@ -259,10 +260,9 @@ const Championship = () => {
     } catch (error) { console.error(error); } finally { setIsFinishing(false); }
   };
 
-  // ABAS COM O BOTÃO TABELA SEMPRE VISÍVEL
   const tabs = [
     { key: "matches" as const, label: "Rodadas", icon: Shuffle, hide: false },
-    { key: "standings" as const, label: "Tabela", icon: LayoutGrid, hide: false }, // Nunca oculta a tabela agora!
+    { key: "standings" as const, label: "Tabela", icon: LayoutGrid, hide: false },
     { key: "bracket" as const, label: "Mata-mata", icon: GitBranch, hide: config.type === 'LEAGUE' },
   ];
 
@@ -289,7 +289,7 @@ const Championship = () => {
           <div className="flex items-center gap-3">
             <Trophy className="h-8 w-8 text-primary" />
             {isEditingName ? (
-              <input type="text" value={cupName} onChange={(e) => setCupName(e.target.value)} className="bg-transparent border-b-2 border-primary text-2xl md:text-3xl font-display font-bold text-foreground outline-none w-64 focus:border-neon-blue transition-colors pb-1" autoFocus onBlur={() => setIsEditingName(false)} onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)} />
+              <input type="text" value={cupName} onChange={(e) => setCupName(e.target.value)} className="bg-transparent border-b-2 border-primary text-2xl md:text-3xl font-display font-bold text-foreground outline-none w-64 focus:border-primary transition-colors pb-1" autoFocus onBlur={() => setIsEditingName(false)} onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)} />
             ) : (
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setIsEditingName(true)}>
                 <h1 className="page-header">{cupName}</h1>
@@ -309,7 +309,6 @@ const Championship = () => {
               <p className="text-sm text-muted-foreground">O torneio <strong>{cupName}</strong> foi concluído com sucesso.</p>
               
               <div className="flex items-end justify-center gap-3 sm:gap-6 my-12 h-44 w-full px-4">
-                {/* 2º LUGAR */}
                 {podium.second && (
                   <div className="flex flex-col items-center animate-fade-in opacity-90 flex-1 max-w-[140px]" style={{ animationDelay: '200ms' }}>
                     <span className="text-[10px] font-black text-slate-400 tracking-widest mb-2 uppercase">2º Lugar</span>
@@ -318,14 +317,12 @@ const Championship = () => {
                   </div>
                 )}
 
-                {/* 1º LUGAR */}
                 <div className="flex flex-col items-center animate-fade-in z-10 flex-1 max-w-[160px]" style={{ animationDelay: '600ms' }}>
                   <span className="text-xs font-black text-yellow-400 tracking-[0.2em] mb-2 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)] uppercase">Campeão</span>
                   <span className="font-black text-lg sm:text-xl text-foreground text-center break-words w-full px-1 mb-2">{podium.first.name_player}</span>
                   <div className="w-full h-28 border-t-2 border-l-2 border-r-2 border-yellow-400/50 rounded-t-lg bg-yellow-400/5 shadow-[0_-5px_20px_rgba(250,204,21,0.2)]"></div>
                 </div>
 
-                {/* 3º LUGAR */}
                 {podium.third && (
                   <div className="flex flex-col items-center animate-fade-in opacity-90 flex-1 max-w-[140px]" style={{ animationDelay: '400ms' }}>
                     <span className="text-[10px] font-black text-amber-600 tracking-widest mb-2 uppercase">3º Lugar</span>

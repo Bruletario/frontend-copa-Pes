@@ -9,7 +9,6 @@ interface TournamentBracketProps {
   config: any;
 }
 
-// Helper para agrupar as partidas em pares matemáticos
 function chunkArray<T>(array: T[], size: number): T[][] {
   const result = [];
   for (let i = 0; i < array.length; i += size) {
@@ -152,7 +151,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
              const pairs = chunkArray(col.matches, 2);
              
              return (
-              <div key={`left-${colIndex}`} className="flex-1 flex flex-col h-full shrink-0">
+              <div key={`left-${colIndex}`} className="flex-1 min-w-0 flex flex-col h-full shrink-0">
                 <div className="h-8 lg:h-10 flex items-center justify-center shrink-0 mb-2">
                    <span className="font-display text-[10px] md:text-xs lg:text-sm text-muted-foreground uppercase tracking-widest font-bold text-center drop-shadow-sm">
                       {col.title}
@@ -189,7 +188,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
           })}
 
           {/* =================== CENTRO (FINAL E CAMPEÃO) =================== */}
-          <div className="flex-[1.2] lg:flex-[1.5] flex flex-col h-full relative z-20 shrink-0">
+          <div className="flex-[1.2] lg:flex-[1.5] min-w-0 flex flex-col h-full relative z-20 shrink-0">
             <div className="h-8 lg:h-10 flex items-center justify-center shrink-0 mb-2">
                 <span className="font-display text-xs md:text-sm lg:text-base text-primary uppercase tracking-widest font-black flex items-center gap-2 drop-shadow-sm">
                    <Zap className="w-3 h-3 md:w-4 md:h-4" /> {finalMatch?.title || "Grande Final"} <Zap className="w-3 h-3 md:w-4 md:h-4" />
@@ -201,7 +200,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
               <div className="flex flex-col items-center justify-end flex-1 w-full pb-4 lg:pb-8">
                 <img src="https://cdn-icons-png.flaticon.com/512/3112/3112946.png" alt="Troféu" className="w-20 h-20 md:w-28 md:h-28 lg:w-36 lg:h-36 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] mb-3 lg:mb-4 hover:scale-110 transition-transform" />
                 {championTeam ? (
-                  <div className="bg-background/95 border border-primary/50 px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-[0_0_20px_rgba(250,204,21,0.2)] text-center flex flex-col items-center w-full max-w-[90%] backdrop-blur-md">
+                  <div className="bg-background/95 border border-primary/50 px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.2)] text-center flex flex-col items-center w-full max-w-[90%] backdrop-blur-md">
                     <span className="font-display font-black text-lg md:text-2xl lg:text-3xl text-primary uppercase truncate w-full drop-shadow-md">{championTeam.name_player}</span>
                     <span className="text-[9px] md:text-xs text-muted-foreground uppercase tracking-widest mt-0.5">Campeão Oficial</span>
                   </div>
@@ -240,7 +239,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
              const pairs = chunkArray(col.matches, 2);
              
              return (
-              <div key={`right-${colIndex}`} className="flex-1 flex flex-col h-full shrink-0">
+              <div key={`right-${colIndex}`} className="flex-1 min-w-0 flex flex-col h-full shrink-0">
                 <div className="h-8 lg:h-10 flex items-center justify-center shrink-0 mb-2">
                    <span className="font-display text-[10px] md:text-xs lg:text-sm text-muted-foreground uppercase tracking-widest font-bold text-center drop-shadow-sm">
                       {col.title}
@@ -281,7 +280,6 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
   );
 }
 
-// O CARD: Focado em esticar fluidamente no flex, sem quebrar.
 function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
   const { ida, volta } = matchObj;
   const isHomeAway = !!volta && Object.keys(volta).length > 0;
@@ -290,7 +288,6 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
   const isVoltaFinished = volta?.status_game === "Finalizado";
   const isGhost = !ida?.team_house_id && !ida?._ghost_t1;
 
-  // Lógica para detectar se a partida encontra-se viva 
   const isLive = ida?.status_game === "Em Andamento" || volta?.status_game === "Em Andamento";
   
   let t1 = getTeam(ida?.team_house_id) || ida?._ghost_t1;
@@ -336,7 +333,7 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
 
   let cardStyles = "border-border/50 hover:border-primary/50 transition-all shadow-md bg-card/95";
   if (isFinal && (isIdaFinished || isVoltaFinished)) {
-      cardStyles = "border-primary shadow-[0_0_20px_rgba(250,204,21,0.2)] ring-2 ring-primary/50 bg-background";
+      cardStyles = "border-primary shadow-[0_0_20px_rgba(255,255,255,0.2)] ring-2 ring-primary/50 bg-background";
   } else if (isFinal) {
       cardStyles = "border-border/80 shadow-[0_0_20px_rgba(255,255,255,0.08)] ring-1 ring-border bg-background";
   } else if (isBronze) {
@@ -345,7 +342,7 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
 
   if (isGhost) {
     return (
-      <div className="w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] relative rounded-xl border-2 border-dashed border-border/40 opacity-50 bg-transparent">
+      <div className="w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] relative rounded-xl border-2 border-dashed border-border/40 opacity-50 bg-transparent min-w-0">
         {badgeText && (
            <div className="absolute -top-3 lg:-top-3.5 left-1/2 -translate-x-1/2 bg-background border border-border/50 px-2 py-0.5 rounded-md text-[7px] lg:text-[9px] font-bold uppercase tracking-widest text-muted-foreground z-30 shadow-sm whitespace-nowrap">
              {badgeText}
@@ -361,9 +358,8 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
   }
 
   return (
-    <div className={`w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] rounded-xl relative border-2 ${cardStyles}`}>
+    <div className={`w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] rounded-xl relative border-2 ${cardStyles} min-w-0`}>
       
-      {/* BADGE EXTERNO (COM INDICADOR AO VIVO DINÂMICO E SEM EMOJIS) */}
       {(badgeText || isLive) && (
          <div className="absolute -top-3 lg:-top-3.5 left-1/2 -translate-x-1/2 bg-muted border border-border/50 px-2 py-0.5 rounded-md flex items-center gap-1.5 text-[7px] lg:text-[9px] font-bold uppercase tracking-widest text-muted-foreground z-30 shadow-sm whitespace-nowrap">
            {isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
@@ -381,7 +377,6 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
   );
 }
 
-// MATCH ROW: Componente das equipes renderizando escudos e nomes grandes
 function MatchRow({ player, score, subScore, isWinner = false, seed, isPenaltyWinner }: any) {
   return (
     <div className={`flex flex-1 items-center justify-between px-2 md:px-3 lg:px-4 py-1.5 lg:py-2 transition-colors ${isWinner ? "bg-primary/15" : ""}`}>
@@ -397,7 +392,7 @@ function MatchRow({ player, score, subScore, isWinner = false, seed, isPenaltyWi
               {player?.name_player || "A Definir"}
             </span>
             {isPenaltyWinner && (
-               <span className="text-[7px] lg:text-[9px] text-blue-400 border border-blue-400/40 bg-blue-400/10 px-1 py-0.5 rounded tracking-widest uppercase shadow-sm font-bold">Pên</span>
+               <span className="text-[7px] lg:text-[9px] text-primary border border-primary/40 bg-primary/10 px-1 py-0.5 rounded tracking-widest uppercase shadow-sm font-bold">Pên</span>
             )}
           </div>
           {player && <span className="text-[8px] lg:text-[10px] font-medium text-muted-foreground/80 mt-0.5 truncate max-w-[60px] md:max-w-[100px] lg:max-w-[160px]">{player.team_player}</span>}

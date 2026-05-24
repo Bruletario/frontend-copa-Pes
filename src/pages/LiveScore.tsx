@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom"; 
 import { StandingsTable } from "@/components/StandingsTable";
 import { Radio, Play, Plus, Minus, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Tv, Shield, Trophy } from "lucide-react";
@@ -58,8 +58,11 @@ const LiveScore = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const rounds = [...new Set(games.map((m) => m.round))].sort((a, b) => a - b);
-  
+  // Otimização: useMemo nas renderizações computacionais intensas
+  const rounds = useMemo(() => [...new Set(games.map((m) => m.round))].sort((a, b) => a - b), [games]);
+  const knockoutGames = useMemo(() => games.filter(g => g.round >= 90), [games]);
+  const leagueGames = useMemo(() => games.filter(g => g.round < 90), [games]);
+
   useEffect(() => {
     if (rounds.length > 0 && (!currentRound || !rounds.includes(currentRound))) {
       const firstUnfinished = rounds.find(r => games.some(g => g.round === r && g.status_game !== "Finalizado"));
@@ -71,7 +74,6 @@ const LiveScore = () => {
   const handlePrevRound = () => { if (currentIndex > 0) setCurrentRound(rounds[currentIndex - 1]); };
   const handleNextRound = () => { if (currentIndex < rounds.length - 1) setCurrentRound(rounds[currentIndex + 1]); };
 
-  const knockoutGames = games.filter(g => g.round >= 90);
   const hasKnockout = knockoutGames.length > 0;
   const isHomeAway = knockoutGames.some(g => g.is_return_match);
 
@@ -103,7 +105,7 @@ const LiveScore = () => {
     return `Eliminatorias`;
   };
 
-  const roundMatches = games.filter((m) => m.round === currentRound);
+  const roundMatches = useMemo(() => games.filter((m) => m.round === currentRound), [games, currentRound]);
   const getTeam = (id: number) => teams.find(t => t.id === id);
 
   const getScore = (match: GameData, side: "s1" | "s2") => {
@@ -170,7 +172,6 @@ const LiveScore = () => {
   };
 
   const isTournamentRunning = games.length > 0;
-  const leagueGames = games.filter(g => g.round < 90);
   const hasLeague = leagueGames.length > 0;
   const isLeagueFinished = hasLeague && leagueGames.every(g => g.status_game === "Finalizado");
 
@@ -190,17 +191,18 @@ const LiveScore = () => {
       }
   }
 
-  const activeTeams = teams.filter(t => t.team_player !== "Sem Time");
-  const sortedTeams = [...activeTeams].sort((a, b) => {
+  const sortedTeams = useMemo(() => {
+    const activeTeams = teams.filter(t => t.team_player !== "Sem Time");
+    return [...activeTeams].sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       return (b.goals_score - b.goals_conceded) - (a.goals_score - a.goals_conceded);
-  });
+    });
+  }, [teams]);
 
   let podium = { first: sortedTeams[0], second: sortedTeams[1], third: sortedTeams[2] };
   
   if (isFullyFinished && hasKnockout && finalMatch) {
       let homeWon = false;
-      
       if (finalMatch.is_return_match) {
           const idaGame = knockoutGames.find(g => g.round === finalMatch.round - 1 && g.team_house_id === finalMatch.team_out_id);
           if (idaGame) {
@@ -214,7 +216,6 @@ const LiveScore = () => {
           homeWon = finalMatch.goals_home > finalMatch.goals_out || (isTie && finalMatch.penalty_winner_id === finalMatch.team_house_id);
       }
       const winnerId = homeWon ? finalMatch.team_house_id : finalMatch.team_out_id;
-      
       podium.first = teams.find(t => t.id === winnerId) || sortedTeams[0];
   }
 
@@ -275,9 +276,9 @@ const LiveScore = () => {
             }
 
             return (
-              <div key={match.match_id} className={`card-elevated p-6 md:p-8 transition-all ${ live ? "border-neon-blue/50 shadow-[0_0_20px_rgba(0,191,255,0.15)] bg-background" : isFinished ? "bg-muted/5 opacity-80 border-border/50" : "bg-muted/10 border-border/50" }`}>
+              <div key={match.match_id} className={`card-elevated p-6 md:p-8 transition-all ${ live ? "border-primary/50 shadow-[0_0_20px_rgba(255,255,255,0.15)] bg-background" : isFinished ? "bg-muted/5 opacity-80 border-border/50" : "bg-muted/10 border-border/50" }`}>
                 <div className="flex justify-center mb-4 h-6">
-                  {live && <div className="flex items-center gap-1.5 text-neon-blue text-xs font-bold animate-pulse px-3 py-1 bg-neon-blue/10 rounded-full border border-neon-blue/30"><Radio className="h-3.5 w-3.5" /> AO VIVO</div>}
+                  {live && <div className="flex items-center gap-1.5 text-primary text-xs font-bold animate-pulse px-3 py-1 bg-primary/10 rounded-full border border-primary/30"><Radio className="h-3.5 w-3.5" /> AO VIVO</div>}
                   {isFinished && !live && <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold px-3 py-1 bg-muted/50 rounded-full"><CheckCircle2 className="h-3.5 w-3.5" /> ENCERRADO</div>}
                 </div>
 
@@ -288,7 +289,7 @@ const LiveScore = () => {
                       <p className="font-display text-lg font-bold leading-tight flex items-center justify-center gap-2">
                         {tHome?.name_player || "A Definir"}
                         {isFinished && match.penalty_winner_id === tHome?.id && (
-                           <span className="text-[9px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded tracking-widest uppercase">Penaltis</span>
+                           <span className="text-[9px] text-primary border border-primary/30 bg-primary/10 px-1 py-0.5 rounded tracking-widest uppercase">Penaltis</span>
                         )}
                       </p>
                       <p className="text-muted-foreground text-xs uppercase tracking-wider font-bold mt-1">{tHome?.team_player}</p>
@@ -306,7 +307,7 @@ const LiveScore = () => {
                       <span className={`font-display text-5xl md:text-7xl font-bold ${live ? 'text-primary neon-text' : 'text-foreground'}`}>{getScore(match, "s2")}</span>
                     </div>
                     {idaGame && (
-                      <div className="mt-2 text-[10px] text-neon-blue font-bold uppercase tracking-widest bg-neon-blue/10 border border-neon-blue/30 px-2 py-0.5 rounded-md shadow-sm">
+                      <div className="mt-2 text-[10px] text-primary font-bold uppercase tracking-widest bg-primary/10 border border-primary/30 px-2 py-0.5 rounded-md shadow-sm">
                           Agregado: {aggHome} - {aggOut}
                       </div>
                     )}
@@ -318,7 +319,7 @@ const LiveScore = () => {
                       <p className="font-display text-lg font-bold leading-tight flex items-center justify-center gap-2">
                         {tOut?.name_player || "A Definir"}
                         {isFinished && match.penalty_winner_id === tOut?.id && (
-                           <span className="text-[9px] text-neon-blue border border-neon-blue/30 bg-neon-blue/10 px-1 py-0.5 rounded tracking-widest uppercase">Penaltis</span>
+                           <span className="text-[9px] text-primary border border-primary/30 bg-primary/10 px-1 py-0.5 rounded tracking-widest uppercase">Penaltis</span>
                         )}
                       </p>
                       <p className="text-muted-foreground text-xs uppercase tracking-wider font-bold mt-1">{tOut?.team_player}</p>
@@ -339,7 +340,7 @@ const LiveScore = () => {
                 )}
                 {live && (
                   <div className="flex justify-center mt-4 md:mt-2 h-10">
-                    <button onClick={() => endMatch(match.match_id)} disabled={isProcessing === match.match_id} className="flex items-center gap-2 bg-neon-blue text-primary-foreground px-8 py-2.5 rounded-full font-display font-semibold text-sm hover:opacity-90 transition-all shadow-[0_0_15px_rgba(0,191,255,0.4)] disabled:opacity-50">
+                    <button onClick={() => endMatch(match.match_id)} disabled={isProcessing === match.match_id} className="flex items-center gap-2 bg-primary text-primary-foreground px-8 py-2.5 rounded-full font-display font-semibold text-sm hover:opacity-90 transition-all shadow-[0_0_15px_rgba(255,255,255,0.4)] disabled:opacity-50">
                       {isProcessing === match.match_id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Finalizar Partida"}
                     </button>
                   </div>
@@ -352,18 +353,19 @@ const LiveScore = () => {
         </div>
       </div>
 
-      <div className="lg:w-[380px] w-full border border-border/50 bg-card/50 p-6 rounded-xl self-start sticky top-24">
+      {/* Largura aumentada e ajustada para a tabela mais detalhada */}
+      <div className="lg:w-[450px] lg:min-w-[450px] w-full border border-border/50 bg-card/50 p-6 rounded-xl self-start sticky top-24">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider">Classificacao Geral</h3>
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse-neon" title="Atualizacao em tempo real"></div>
         </div>
-        <StandingsTable teams={teams} compact ignoreGroups={true} />
+        <StandingsTable teams={teams} games={games} compact ignoreGroups={true} />
       </div>
 
       <AlertDialog open={!!penaltyPrompt} onOpenChange={(open) => !open && setPenaltyPrompt(null)}>
-        <AlertDialogContent className="max-w-md shadow-[0_0_20px_rgba(0,191,255,0.15)]">
+        <AlertDialogContent className="max-w-md shadow-[0_0_20px_rgba(255,255,255,0.15)]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-2xl text-neon-blue">Disputa de Penaltis!</AlertDialogTitle>
+            <AlertDialogTitle className="text-center text-2xl text-primary">Disputa de Penaltis!</AlertDialogTitle>
             <AlertDialogDescription className="text-center">O agregado terminou empatado. <strong>Quem venceu nos penaltis?</strong></AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">

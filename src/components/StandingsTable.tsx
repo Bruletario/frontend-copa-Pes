@@ -3,12 +3,19 @@ import { Shield } from "lucide-react";
 
 interface StandingsTableProps {
   teams: TeamData[];
+  games?: any[]; // Array de partidas opcional para validar tags de live
   compact?: boolean;
   ignoreGroups?: boolean;
 }
 
-export function StandingsTable({ teams, compact = false, ignoreGroups = false }: StandingsTableProps) {
+export function StandingsTable({ teams, games, compact = false, ignoreGroups = false }: StandingsTableProps) {
   const activeTeams = teams.filter(t => t.team_player !== "Sem Time");
+  
+  // Mapeia os IDs dos times que estao jogando AGORA.
+  const liveTeamIds = new Set(
+    games?.filter(g => g.status_game === "Em Andamento")
+          .flatMap(g => [g.team_house_id, g.team_out_id]) || []
+  );
   
   const sortTeams = (teamList: TeamData[]) => {
     return [...teamList].sort((a, b) => {
@@ -50,7 +57,6 @@ export function StandingsTable({ teams, compact = false, ignoreGroups = false }:
                   <th className="text-center py-3 px-2 font-display text-xs text-muted-foreground uppercase">GM</th>
                   <th className="text-center py-3 px-2 font-display text-xs text-muted-foreground uppercase">GS</th>
                   <th className="text-center py-3 px-2 font-display text-xs text-muted-foreground uppercase">SG</th>
-                  {/* Nova Coluna % */}
                   <th className="text-center py-3 px-2 font-display text-xs text-muted-foreground uppercase">%</th>
                 </>
               )}
@@ -70,7 +76,15 @@ export function StandingsTable({ teams, compact = false, ignoreGroups = false }:
                     <div className="flex items-center gap-3">
                       <Shield className="h-5 w-5 shrink-0" style={{ color: team.color }} />
                       <div className="flex flex-col">
-                        <span className="font-display font-bold leading-none">{team.name_player}</span>
+                        <div className="flex items-center gap-2">
+                           <span className="font-display font-bold leading-none">{team.name_player}</span>
+                           {/* TAG AO VIVO SEM EMOJIS */}
+                           {liveTeamIds.has(team.id) && (
+                              <span className="flex items-center gap-1 text-[8px] bg-red-500/10 border border-red-500/30 text-red-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> Ao Vivo
+                              </span>
+                           )}
+                        </div>
                         <span className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wider font-semibold">{team.team_player}</span>
                       </div>
                     </div>
@@ -84,7 +98,6 @@ export function StandingsTable({ teams, compact = false, ignoreGroups = false }:
                       <td className="text-center py-3 px-2 opacity-80">{team.goals_score}</td>
                       <td className="text-center py-3 px-2 opacity-80">{team.goals_conceded}</td>
                       <td className="text-center py-3 px-2 font-bold"><span className={sg > 0 ? "text-win" : sg < 0 ? "text-loss" : "text-muted-foreground"}>{sg > 0 ? `+${sg}` : sg}</span></td>
-                      {/* Novo Dado: % Aproveitamento */}
                       <td className="text-center py-3 px-2 font-bold text-xs text-muted-foreground">{getAproveitamento(team.points, team.matches_played)}</td>
                     </>
                   )}

@@ -132,8 +132,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
   });
 
   return (
-    // Breakout de tela inteira: w-[100vw] e translate forçam ignorar bordas do layout pai
-    <div className="relative w-[100vw] left-1/2 -translate-x-1/2 h-[100vh] min-h-[700px] flex flex-col items-center justify-center overflow-hidden bg-background/50 pt-2 pb-6">
+    <div className="relative w-full h-[100vh] min-h-[700px] flex flex-col items-center justify-center overflow-visible bg-background/50 rounded-xl pt-2 pb-6 border border-border/20">
       
       {isProjection && (
          <div className="bg-primary/10 border border-primary/20 text-primary px-6 py-2 rounded-lg flex items-center gap-3 shadow-sm backdrop-blur-md shrink-0 mb-4">
@@ -146,7 +145,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
       )}
 
       {/* Grid principal do mata-mata */}
-      <div className="w-full flex-1 flex justify-center items-stretch overflow-hidden px-1 md:px-2 gap-0">
+      <div className="w-full flex-1 flex justify-center items-stretch px-1 md:px-2 gap-0 mt-4">
         
           {/* =================== LADO ESQUERDO =================== */}
           {leftCols.map((col, colIndex) => {
@@ -154,7 +153,6 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
              
              return (
               <div key={`left-${colIndex}`} className="flex-1 flex flex-col h-full shrink-0">
-                {/* Título Dedicado (Não buga mais) */}
                 <div className="h-8 lg:h-10 flex items-center justify-center shrink-0 mb-2">
                    <span className="font-display text-[10px] md:text-xs lg:text-sm text-muted-foreground uppercase tracking-widest font-bold text-center drop-shadow-sm">
                       {col.title}
@@ -163,10 +161,8 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
 
                 <div className="flex-1 flex flex-col w-full">
                    {pairs.map((pair, pairIndex) => (
-                      // Wrapper do par com padding exato para matemática das linhas
                       <div key={pairIndex} className="flex-1 flex flex-col relative w-full justify-around px-2 md:px-3 lg:px-4 py-1 lg:py-2">
                           
-                          {/* Conectores exatos baseados no padding */}
                           {pair.length === 2 && (
                               <>
                                   <div className="absolute right-0 top-[25%] bottom-[25%] w-2 md:w-3 lg:w-4 border-r-2 border-y-2 border-primary/30 rounded-r-lg z-0" />
@@ -202,7 +198,6 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
 
             <div className="flex-1 flex flex-col items-center justify-center w-full px-2 md:px-3 lg:px-4">
               
-              {/* Área do Campeão (Empurra o card da final para o centro geométrico) */}
               <div className="flex flex-col items-center justify-end flex-1 w-full pb-4 lg:pb-8">
                 <img src="https://cdn-icons-png.flaticon.com/512/3112/3112946.png" alt="Troféu" className="w-20 h-20 md:w-28 md:h-28 lg:w-36 lg:h-36 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] mb-3 lg:mb-4 hover:scale-110 transition-transform" />
                 {championTeam ? (
@@ -228,7 +223,7 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
               <div className="flex flex-col items-center justify-start flex-1 w-full pt-6 lg:pt-10 relative">
                 {!isProjection && thirdPlaceMatch && (
                   <div className="w-full max-w-[90%] border-t border-border/30 pt-6 relative animate-fade-in">
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-background/90 px-3 py-1 rounded-full border border-border/20 backdrop-blur-sm flex items-center gap-1.5">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-background/90 px-3 py-1 rounded-full border border-border/20 backdrop-blur-sm flex items-center gap-1.5 z-40">
                        <Medal className="h-3 w-3 lg:h-4 lg:w-4 text-amber-500" />
                        <span className="font-display font-black text-amber-500 uppercase tracking-widest text-[9px] lg:text-[11px]">3º Lugar</span>
                     </div>
@@ -290,9 +285,13 @@ export function TournamentBracket({ games, teams, config }: TournamentBracketPro
 function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
   const { ida, volta } = matchObj;
   const isHomeAway = !!volta && Object.keys(volta).length > 0;
+  
   const isIdaFinished = ida?.status_game === "Finalizado";
   const isVoltaFinished = volta?.status_game === "Finalizado";
   const isGhost = !ida?.team_house_id && !ida?._ghost_t1;
+
+  // Lógica para detectar se a partida encontra-se viva 
+  const isLive = ida?.status_game === "Em Andamento" || volta?.status_game === "Em Andamento";
   
   let t1 = getTeam(ida?.team_house_id) || ida?._ghost_t1;
   let t2 = getTeam(ida?.team_out_id) || ida?._ghost_t2;
@@ -346,27 +345,38 @@ function BracketMatchCard({ matchObj, isFinal, getTeam, isBronze }: any) {
 
   if (isGhost) {
     return (
-      <div className="w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] relative flex flex-col justify-center rounded-xl overflow-hidden border-2 border-dashed border-border/40 opacity-50 bg-transparent">
-        <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t1_seed} />
-        <div className="border-t-2 border-dashed border-border/30" />
-        <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t2_seed} />
+      <div className="w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] relative rounded-xl border-2 border-dashed border-border/40 opacity-50 bg-transparent">
+        {badgeText && (
+           <div className="absolute -top-3 lg:-top-3.5 left-1/2 -translate-x-1/2 bg-background border border-border/50 px-2 py-0.5 rounded-md text-[7px] lg:text-[9px] font-bold uppercase tracking-widest text-muted-foreground z-30 shadow-sm whitespace-nowrap">
+             {badgeText}
+           </div>
+        )}
+        <div className="w-full h-full flex flex-col justify-center overflow-hidden rounded-xl">
+          <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t1_seed} />
+          <div className="border-t-2 border-dashed border-border/30 w-full" />
+          <MatchRow player={null} score={null} subScore={null} seed={ida?._ghost_t2_seed} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] rounded-xl overflow-hidden backdrop-blur-md flex flex-col justify-center border-2 relative ${cardStyles}`}>
+    <div className={`w-full h-full min-h-[60px] lg:min-h-[80px] max-h-[140px] rounded-xl relative border-2 ${cardStyles}`}>
       
-      {/* Badge Interno Elegante */}
-      {badgeText && (
-         <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-background px-3 py-0.5 rounded-b-md text-[7px] lg:text-[9px] font-bold uppercase tracking-widest text-muted-foreground z-10 border-x border-b border-border/40 shadow-sm">
+      {/* BADGE EXTERNO (COM INDICADOR AO VIVO DINÂMICO E SEM EMOJIS) */}
+      {(badgeText || isLive) && (
+         <div className="absolute -top-3 lg:-top-3.5 left-1/2 -translate-x-1/2 bg-muted border border-border/50 px-2 py-0.5 rounded-md flex items-center gap-1.5 text-[7px] lg:text-[9px] font-bold uppercase tracking-widest text-muted-foreground z-30 shadow-sm whitespace-nowrap">
+           {isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
            {badgeText}
+           {isLive && !badgeText && <span className="text-red-500">Ao Vivo</span>}
          </div>
       )}
       
-      <MatchRow player={t1} score={s1Main} subScore={s1Sub} isWinner={homeWins} isPenaltyWinner={isTie && pWinner === t1?.id} />
-      <div className="border-t border-border/40 w-full" />
-      <MatchRow player={t2} score={s2Main} subScore={s2Sub} isWinner={outWins} isPenaltyWinner={isTie && pWinner === t2?.id} />
+      <div className="w-full h-full flex flex-col justify-center rounded-[10px] overflow-hidden backdrop-blur-md">
+        <MatchRow player={t1} score={s1Main} subScore={s1Sub} isWinner={homeWins} isPenaltyWinner={isTie && pWinner === t1?.id} />
+        <div className="border-t border-border/40 w-full" />
+        <MatchRow player={t2} score={s2Main} subScore={s2Sub} isWinner={outWins} isPenaltyWinner={isTie && pWinner === t2?.id} />
+      </div>
     </div>
   );
 }

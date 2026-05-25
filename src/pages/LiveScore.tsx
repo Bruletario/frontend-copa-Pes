@@ -22,15 +22,32 @@ const LiveScore = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [currentRound, setCurrentRound] = useState<number>(1);
-  const [liveMatchIds, setLiveMatchIds] = useState<Set<number>>(new Set());
-  const [scores, setScores] = useState<Record<number, { s1: number; s2: number }>>({});
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
   
   const [penaltyPrompt, setPenaltyPrompt] = useState<{match: GameData, s1: number, s2: number} | null>(null);
-
   const [config, setConfig] = useState<any>({});
 
+  // Recupera o estado salvo no navegador para resistir ao F5 sem precisar do servidor (Persistência Local)
+  const [liveMatchIds, setLiveMatchIds] = useState<Set<number>>(() => {
+    const saved = localStorage.getItem('liveMatchIds');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+  
+  const [scores, setScores] = useState<Record<number, { s1: number; s2: number }>>(() => {
+    const saved = localStorage.getItem('liveScores');
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const { toast } = useToast();
+
+  // Salva no navegador toda vez que houver uma alteração (Mecanismo anti-F5 super leve)
+  useEffect(() => {
+    localStorage.setItem('liveMatchIds', JSON.stringify([...liveMatchIds]));
+  }, [liveMatchIds]);
+
+  useEffect(() => {
+    localStorage.setItem('liveScores', JSON.stringify(scores));
+  }, [scores]);
 
   const fetchData = async () => {
     try {
@@ -113,15 +130,20 @@ const LiveScore = () => {
     return side === "s1" ? (match.goals_home || 0) : (match.goals_out || 0);
   };
 
+  // Funções de controle de estado totalmente locais e síncronas para zero lag
   const startMatch = (match: GameData) => {
     setLiveMatchIds((prev) => new Set(prev).add(match.match_id));
-    if (!scores[match.match_id]) setScores((prev) => ({ ...prev, [match.match_id]: { s1: match.goals_home || 0, s2: match.goals_out || 0 } }));
+    if (!scores[match.match_id]) {
+        setScores((prev) => ({ ...prev, [match.match_id]: { s1: match.goals_home || 0, s2: match.goals_out || 0 } }));
+    }
   };
 
   const addGoal = (matchId: number, side: "s1" | "s2") => setScores((prev) => ({ ...prev, [matchId]: { ...prev[matchId], [side]: (prev[matchId]?.[side] ?? 0) + 1 } }));
   const removeGoal = (matchId: number, side: "s1" | "s2") => setScores((prev) => ({ ...prev, [matchId]: { ...prev[matchId], [side]: Math.max(0, (prev[matchId]?.[side] ?? 0) - 1) } }));
+  
   const isLive = (matchId: number) => liveMatchIds.has(matchId);
 
+  // Única comunicação com o backend durante o fluxo da partida (ao encerrar)
   const endMatch = async (matchId: number, advancingTeamId?: number) => {
     const match = games.find(g => g.match_id === matchId);
     if (!match) return;
@@ -160,10 +182,13 @@ const LiveScore = () => {
       });
       if (!response.ok) throw new Error("Falha ao salvar");
 
+      // Limpa os registros locais da partida e encerra
       setLiveMatchIds((prev) => { const next = new Set(prev); next.delete(matchId); return next; });
+      setScores((prev) => { const next = { ...prev }; delete next[matchId]; return next; });
       setPenaltyPrompt(null);
+      
       toast({ title: "Apito Final!", description: advancingTeamId ? "Vencedor nos penaltis definido!" : "Partida encerrada." });
-      fetchData(); 
+      fetchData(); // Atualiza toda a tabela e campeonato com os dados consolidados no banco
     } catch (error) {
       toast({ title: "Erro", description: "Nao foi possivel finalizar o jogo.", variant: "destructive" });
     } finally {
@@ -353,11 +378,9 @@ const LiveScore = () => {
         </div>
       </div>
 
-      {/* Largura aumentada e ajustada para a tabela mais detalhada */}
       <div className="lg:w-[450px] lg:min-w-[450px] w-full border border-border/50 bg-card/50 p-6 rounded-xl self-start sticky top-24">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider">Classificacao Geral</h3>
-          <div className="h-2 w-2 rounded-full bg-primary animate-pulse-neon" title="Atualizacao em tempo real"></div>
         </div>
         <StandingsTable teams={teams} games={games} compact ignoreGroups={true} />
       </div>

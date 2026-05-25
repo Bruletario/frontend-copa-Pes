@@ -1,5 +1,6 @@
 import { TeamData } from "@/pages/Teams";
 import { Shield } from "lucide-react";
+import { useMemo } from "react";
 
 interface StandingsTableProps {
   teams: TeamData[];
@@ -15,13 +16,52 @@ export function StandingsTable({ teams, games, compact = false, ignoreGroups = f
     games?.filter(g => g.status_game === "Em Andamento")
           .flatMap(g => [g.team_house_id, g.team_out_id]) || []
   );
+
+  // Lógica de projeção matemática para atualizar a tabela em tempo real
+  const projectedTeams = useMemo(() => {
+    const newTeams = activeTeams.map(t => ({...t})); 
+    
+    // Apenas os jogos das fases classificatórias (rodadas < 90) influenciam os pontos da tabela
+    const liveLeagueGames = games?.filter(g => g.status_game === "Em Andamento" && g.round < 90) || [];
+    
+    liveLeagueGames.forEach(game => {
+      const tHome = newTeams.find(t => t.id === game.team_house_id);
+      const tOut = newTeams.find(t => t.id === game.team_out_id);
+      if(!tHome || !tOut) return;
+
+      const gh = game.goals_home || 0;
+      const go = game.goals_out || 0;
+
+      // Adiciona o saldo provisório
+      tHome.goals_score += gh;
+      tHome.goals_conceded += go;
+      tOut.goals_score += go;
+      tOut.goals_conceded += gh;
+
+      // Adiciona o jogo provisório
+      tHome.matches_played += 1;
+      tOut.matches_played += 1;
+
+      // Distribui os pontos da rodada de acordo com quem está vencendo/empatando
+      if (gh > go) {
+         tHome.points += 3; tHome.wins += 1; tOut.losses += 1;
+      } else if (go > gh) {
+         tOut.points += 3; tOut.wins += 1; tHome.losses += 1;
+      } else {
+         tHome.points += 1; tHome.draws += 1; tOut.points += 1; tOut.draws += 1;
+      }
+    });
+    return newTeams;
+  }, [activeTeams, games]);
   
   const sortTeams = (teamList: TeamData[]) => {
     return [...teamList].sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       const gdA = a.goals_score - a.goals_conceded;
       const gdB = b.goals_score - b.goals_conceded;
-      return gdB - gdA;
+      if (gdB !== gdA) return gdB - gdA;
+      // Critério de desempate final: quem fez mais gols
+      return b.goals_score - a.goals_score;
     });
   };
 
@@ -125,10 +165,10 @@ export function StandingsTable({ teams, games, compact = false, ignoreGroups = f
   if (hasGroups) {
     return (
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-fade-in">
-        {groups.map(g => renderTable(activeTeams.filter(t => t.grupo === g), `Grupo ${g}`))}
+        {groups.map(g => renderTable(projectedTeams.filter(t => t.grupo === g), `Grupo ${g}`))}
       </div>
     );
   }
 
-  return <div className="animate-fade-in">{renderTable(activeTeams)}</div>;
+  return <div className="animate-fade-in">{renderTable(projectedTeams)}</div>;
 }

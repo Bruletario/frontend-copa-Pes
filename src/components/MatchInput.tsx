@@ -113,7 +113,7 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ goals_home: Number(s1), goals_out: Number(s2), status_game: "Finalizado", advancing_team_id: advancingTeamId }),
       });
-      toast({ title: "Salvo!", description: advancingTeamId ? "Vencedor nos penaltis definido!" : "Placar atualizado." });
+      toast({ title: "Salvo!", description: advancingTeamId ? "Vencedor nos penaltis definido!" : "Placar atualizado.", className: "bg-white text-black border-white" });
       setPenaltyPrompt(null);
       onRefresh();
     } catch (error) {
@@ -271,7 +271,11 @@ export function MatchInput({ games, teams, onRefresh, config, onSwitchTab }: Mat
                 <span className="text-[10px] text-muted-foreground mt-1 text-center">Avancar</span>
              </button>
           </div>
-          <div className="flex justify-center mt-2"><AlertDialogCancel className="bg-transparent border-0 text-muted-foreground hover:bg-muted/50">Cancelar</AlertDialogCancel></div>
+          <div className="flex justify-center mt-2">
+            <AlertDialogCancel className="px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors">
+              Cancelar
+            </AlertDialogCancel>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
     </div>

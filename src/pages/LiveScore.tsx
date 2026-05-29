@@ -27,7 +27,8 @@ const LiveScore = () => {
   const [penaltyPrompt, setPenaltyPrompt] = useState<{match: GameData, s1: number, s2: number} | null>(null);
   const [config, setConfig] = useState<any>({});
 
-  // Recupera o estado salvo no navegador para resistir ao F5 sem precisar do servidor (Persistência Local)
+  const [currentGroupIndex, setCurrentGroupIndex] = useState<number>(0);
+
   const [liveMatchIds, setLiveMatchIds] = useState<Set<number>>(() => {
     const saved = localStorage.getItem('liveMatchIds');
     return saved ? new Set(JSON.parse(saved)) : new Set();
@@ -40,7 +41,6 @@ const LiveScore = () => {
 
   const { toast } = useToast();
 
-  // Salva no navegador toda vez que houver uma alteração (Mecanismo anti-F5 super leve)
   useEffect(() => {
     localStorage.setItem('liveMatchIds', JSON.stringify([...liveMatchIds]));
   }, [liveMatchIds]);
@@ -66,6 +66,7 @@ const LiveScore = () => {
       setTeams(teamsData);
       setGames(gamesData);
       if(configData) setConfig(configData);
+      return gamesData; 
     } catch (error) {
       toast({ title: "Erro", description: "Nao foi possivel carregar os jogos.", variant: "destructive" });
     } finally {
@@ -75,17 +76,28 @@ const LiveScore = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Otimização: useMemo nas renderizações computacionais intensas
   const rounds = useMemo(() => [...new Set(games.map((m) => m.round))].sort((a, b) => a - b), [games]);
   const knockoutGames = useMemo(() => games.filter(g => g.round >= 90), [games]);
   const leagueGames = useMemo(() => games.filter(g => g.round < 90), [games]);
 
+  const sidebarGroups = useMemo(() => {
+    const activeTeams = teams.filter(t => t.team_player !== "Sem Time");
+    return Array.from(new Set(activeTeams.map(t => t.grupo)))
+      .filter(g => g !== undefined && g !== null && g !== "")
+      .sort((a, b) => {
+         const numA = Number(a); const numB = Number(b);
+         return (!isNaN(numA) && !isNaN(numB)) ? numA - numB : String(a).localeCompare(String(b));
+      });
+  }, [teams]);
+
   useEffect(() => {
-    if (rounds.length > 0 && (!currentRound || !rounds.includes(currentRound))) {
+    if (rounds.length === 0) return;
+
+    if (!currentRound || !rounds.includes(currentRound)) {
       const firstUnfinished = rounds.find(r => games.some(g => g.round === r && g.status_game !== "Finalizado"));
       setCurrentRound(firstUnfinished || rounds[0]);
     }
-  }, [rounds, games, currentRound]);
+  }, [rounds, games]); 
 
   const currentIndex = rounds.indexOf(currentRound);
   const handlePrevRound = () => { if (currentIndex > 0) setCurrentRound(rounds[currentIndex - 1]); };
@@ -130,7 +142,6 @@ const LiveScore = () => {
     return side === "s1" ? (match.goals_home || 0) : (match.goals_out || 0);
   };
 
-  // Funções de controle de estado totalmente locais e síncronas para zero lag
   const startMatch = (match: GameData) => {
     setLiveMatchIds((prev) => new Set(prev).add(match.match_id));
     if (!scores[match.match_id]) {
@@ -143,7 +154,6 @@ const LiveScore = () => {
   
   const isLive = (matchId: number) => liveMatchIds.has(matchId);
 
-  // Única comunicação com o backend durante o fluxo da partida (ao encerrar)
   const endMatch = async (matchId: number, advancingTeamId?: number) => {
     const match = games.find(g => g.match_id === matchId);
     if (!match) return;
@@ -182,13 +192,25 @@ const LiveScore = () => {
       });
       if (!response.ok) throw new Error("Falha ao salvar");
 
-      // Limpa os registros locais da partida e encerra
       setLiveMatchIds((prev) => { const next = new Set(prev); next.delete(matchId); return next; });
       setScores((prev) => { const next = { ...prev }; delete next[matchId]; return next; });
       setPenaltyPrompt(null);
       
       toast({ title: "Apito Final!", description: advancingTeamId ? "Vencedor nos penaltis definido!" : "Partida encerrada." });
-      fetchData(); // Atualiza toda a tabela e campeonato com os dados consolidados no banco
+      
+      const freshGames = await fetchData(); 
+      if (freshGames) {
+        const currentRoundGames = freshGames.filter((g: any) => g.round === match.round);
+        const isRoundFinished = currentRoundGames.length > 0 && currentRoundGames.every((g: any) => g.status_game === "Finalizado");
+        if (isRoundFinished) {
+          const allRounds: number[] = Array.from(new Set<number>(freshGames.map((m: any) => Number(m.round)))).sort((a: number, b: number) => a - b);
+          const nextUnfinished = allRounds.find((r: number) => freshGames.some((g: any) => g.round === r && g.status_game !== "Finalizado"));
+          
+          if (nextUnfinished !== undefined) {
+            setCurrentRound(nextUnfinished);
+          }
+        }
+      }
     } catch (error) {
       toast({ title: "Erro", description: "Nao foi possivel finalizar o jogo.", variant: "destructive" });
     } finally {
@@ -203,7 +225,13 @@ const LiveScore = () => {
   const mainBracketGames = knockoutGames.filter(g => g.round < 99);
   const maxKnockoutRound = mainBracketGames.length > 0 ? Math.max(...mainBracketGames.map(g => g.round)) : 0;
   const finalMatch = mainBracketGames.find(g => g.round === maxKnockoutRound);
-  const isKnockoutFinished = finalMatch ? finalMatch.status_game === "Finalizado" : false;
+  
+  const thirdPlaceMatch = knockoutGames.find(g => g.round === 99);
+  
+  const isFinalFinished = finalMatch ? finalMatch.status_game === "Finalizado" : false;
+  const isThirdPlaceFinished = thirdPlaceMatch ? thirdPlaceMatch.status_game === "Finalizado" : true;
+
+  const isKnockoutFinished = isFinalFinished && isThirdPlaceFinished;
 
   let isFullyFinished = false;
   if (isTournamentRunning) {
@@ -219,8 +247,8 @@ const LiveScore = () => {
   const sortedTeams = useMemo(() => {
     const activeTeams = teams.filter(t => t.team_player !== "Sem Time");
     return [...activeTeams].sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      return (b.goals_score - b.goals_conceded) - (a.goals_score - a.goals_conceded);
+      if (b.points !== a.points) return (Number(b.points) || 0) - (Number(a.points) || 0);
+      return (Number(b.goals_score) - Number(b.goals_conceded)) - (Number(a.goals_score) - Number(a.goals_conceded));
     });
   }, [teams]);
 
@@ -243,6 +271,14 @@ const LiveScore = () => {
       const winnerId = homeWon ? finalMatch.team_house_id : finalMatch.team_out_id;
       podium.first = teams.find(t => t.id === winnerId) || sortedTeams[0];
   }
+
+  // Libera todas as equipas se o index chegar ao final (Tabela Geral)
+  const filteredTeamsForSidebar = useMemo(() => {
+    if (config.type === 'GROUPS_KNOCKOUT' && sidebarGroups.length > 0 && currentGroupIndex < sidebarGroups.length) {
+      return teams.filter(t => t.grupo === sidebarGroups[currentGroupIndex]);
+    }
+    return teams;
+  }, [teams, config.type, sidebarGroups, currentGroupIndex]);
 
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -378,11 +414,47 @@ const LiveScore = () => {
         </div>
       </div>
 
-      <div className="lg:w-[450px] lg:min-w-[450px] w-full border border-border/50 bg-card/50 p-6 rounded-xl self-start sticky top-24">
+      <div className="lg:w-[490px] lg:min-w-[490px] w-full border border-border/50 bg-card/50 p-6 rounded-xl self-start sticky top-24">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider">Classificacao Geral</h3>
+          <h3 className="font-display text-sm font-bold text-muted-foreground uppercase tracking-wider">
+            {/* Título muda para Tabela Geral no último passo */}
+            {config.type === 'GROUPS_KNOCKOUT' 
+              ? (currentGroupIndex === sidebarGroups.length ? "Classificacao Geral" : "Classificação por Grupos") 
+              : "Classificacao Geral"}
+          </h3>
+          
+          {config.type === 'GROUPS_KNOCKOUT' && sidebarGroups.length > 1 && (
+            <div className="flex items-center gap-1 bg-muted/80 border border-border/50 p-1 rounded-md animate-fade-in">
+              <button 
+                onClick={() => setCurrentGroupIndex(prev => Math.max(0, prev - 1))} 
+                disabled={currentGroupIndex === 0}
+                className="p-1 rounded bg-secondary hover:bg-secondary/80 disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <span className="text-xs font-bold px-2 text-primary min-w-[65px] text-center uppercase tracking-wider">
+                {/*Texto muda dinamicamente baseado no limite do array */}
+                {currentGroupIndex === sidebarGroups.length ? "Tabela Geral" : `Grupo ${sidebarGroups[currentGroupIndex]}`}
+              </span>
+              <button 
+                onClick={() => setCurrentGroupIndex(prev => Math.min(sidebarGroups.length, prev + 1))} 
+                disabled={currentGroupIndex === sidebarGroups.length}
+                className="p-1 rounded bg-secondary hover:bg-secondary/80 disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
-        <StandingsTable teams={teams} games={games} compact ignoreGroups={true} />
+        
+        <StandingsTable 
+          teams={filteredTeamsForSidebar} 
+          games={games} 
+          compact 
+          ignoreGroups={true} 
+          liveScores={scores} 
+          liveMatchIds={liveMatchIds} 
+        />
       </div>
 
       <AlertDialog open={!!penaltyPrompt} onOpenChange={(open) => !open && setPenaltyPrompt(null)}>

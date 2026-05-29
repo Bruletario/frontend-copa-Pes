@@ -206,7 +206,7 @@ const Championship = () => {
          if (!resKnockout.ok) throw new Error("Falha ao gerar arvore do Mata-Mata.");
       }
 
-      toast({ title: "Sucesso!", description: "Novo campeonato gerado com os elencos atuais!" });
+      toast({ title: "Sucesso!", description: "Novo campeonato gerado com os elencos atuais!", className: "bg-white text-black border-white" });
       setShowAdminPanel(false); setHasSeenPopup(false); 
       await fetchData();
       setActiveTab(config.type === 'KNOCKOUT' ? "bracket" : "matches");
@@ -226,7 +226,7 @@ const Championship = () => {
       });
       if (!res.ok) throw new Error("Falha ao gerar arvore do Mata-Mata.");
       
-      toast({ title: "Sucesso!", description: "Mata-Mata gerado e pronto para disputa!" });
+      toast({ title: "Sucesso!", description: "Mata-Mata gerado e pronto para disputa!", className: "bg-white text-black border-white" });
       await fetchData();
       setActiveTab("bracket");
     } catch (error: any) {
@@ -240,9 +240,11 @@ const Championship = () => {
     setIsCancelling(true);
     try {
       await fetch(`${API_URL}/GAMES/RESET?clearTeams=true`, { method: "DELETE" });
-      toast({ title: "Torneio Cancelado", description: "O campeonato foi apagado." });
+      toast({ title: "Torneio Cancelado", description: "O campeonato foi apagado.", className: "bg-white text-black border-white" });
       setShowAdminPanel(false); setHasSeenPopup(false); fetchData();
-    } catch (error) { console.error(error); } finally { setIsCancelling(false); }
+    } catch (error) { 
+      toast({ title: "Erro", description: "Falha ao cancelar campeonato.", variant: "destructive" });
+    } finally { setIsCancelling(false); }
   };
 
   const handleFinishCup = async () => {
@@ -253,11 +255,13 @@ const Championship = () => {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome_copa: cupName, campeao: podium.first.name_player })
       });
-      toast({ title: "Finalizado!", description: "O historico foi salvo." });
+      toast({ title: "Finalizado!", description: "O historico foi salvo.", className: "bg-white text-black border-white" });
       setCupName(`Copa PES ${new Date().getFullYear() + 1}`);
       setShowAdminPanel(false); setShowChampionPopup(false); setHasSeenPopup(false);
       fetchData(); setActiveTab("standings");
-    } catch (error) { console.error(error); } finally { setIsFinishing(false); }
+    } catch (error) { 
+      toast({ title: "Erro", description: "Falha ao finalizar.", variant: "destructive" });
+    } finally { setIsFinishing(false); }
   };
 
   const tabs = [
@@ -335,14 +339,14 @@ const Championship = () => {
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
                 <button 
                   onClick={() => setShowChampionPopup(false)} 
-                  className="px-8 py-3 rounded-xl font-bold text-sm bg-secondary text-foreground hover:bg-secondary/80 transition-all border border-border/50"
+                  className="px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors"
                 >
                   Voltar
                 </button>
                 <button 
                   onClick={handleFinishCup} 
                   disabled={isFinishing} 
-                  className="bg-primary text-primary-foreground px-10 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
                 >
                   {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} 
                   Encerrar campeonato
@@ -370,14 +374,14 @@ const Championship = () => {
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <button 
               onClick={() => setShowChampionPopup(true)} 
-              className="w-full sm:w-auto px-8 py-3 bg-secondary text-foreground border border-border/50 rounded-xl text-sm font-bold hover:bg-secondary/80 transition-all"
+              className="w-full sm:w-auto px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors"
             >
               Ver pódio
             </button>
             <button 
               onClick={handleFinishCup} 
               disabled={isFinishing} 
-              className="w-full sm:w-auto px-8 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2"
+              className="w-full sm:w-auto bg-primary text-primary-foreground px-6 py-2 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2"
             >
               {isFinishing ? <Loader2 className="animate-spin h-4 w-4"/> : <CheckCircle2 className="h-4 w-4"/>} 
               Guardar histórico
@@ -395,7 +399,7 @@ const Championship = () => {
               <p className="font-display text-base text-foreground">A tabela está definida. É hora dos playoffs.</p>
             </div>
           </div>
-          <button onClick={handleGenerateKnockoutPhase} disabled={isGenerating} className="w-full sm:w-auto px-6 py-2.5 bg-primary text-primary-foreground border-0 rounded-lg text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(255,255,255,0.4)] flex items-center justify-center gap-2">
+          <button onClick={handleGenerateKnockoutPhase} disabled={isGenerating} className="w-full sm:w-auto px-6 py-2 bg-primary text-primary-foreground border-0 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(255,255,255,0.4)] flex items-center justify-center gap-2">
             {isGenerating ? <Loader2 className="animate-spin h-4 w-4"/> : <Shuffle className="h-4 w-4"/>} Gerar Mata-Mata
           </button>
         </div>
@@ -509,25 +513,25 @@ const Championship = () => {
 
                   <div className="flex flex-wrap items-center gap-3 shrink-0">
                     {!isTournamentRunning ? (
-                      <button onClick={handleGenerateChampionship} disabled={isGenerating || !!validationError} className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-lg hover:opacity-90 neon-glow disabled:opacity-50 transition-all">
+                      <button onClick={handleGenerateChampionship} disabled={isGenerating || !!validationError} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50">
                         {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />} Gerar campeonato
                       </button>
                     ) : (
                       <>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                             <button className="flex items-center gap-2 px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/50 text-sm font-bold rounded-lg hover:bg-red-500/20 transition-all">
+                             <button className="px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center gap-2">
                                {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Cancelar campeonato
                              </button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Cancelar campeonato?</AlertDialogTitle>
-                              <AlertDialogDescription>O campeonato será cancelado e os times perderão seus jogadores e técnicos.</AlertDialogDescription>
+                              <AlertDialogDescription>O campeonato será cancelado e os jogadores ficaram sem time.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel className="bg-red-600 text-white hover:bg-red-700 border-0">Voltar</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleCancelCup} className="bg-white text-black hover:bg-gray-200">Apagar campeonato</AlertDialogAction>
+                              <AlertDialogCancel className="px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors">Voltar</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleCancelCup} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity">Apagar campeonato</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

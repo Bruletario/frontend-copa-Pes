@@ -124,7 +124,7 @@ const Teams = () => {
       });
 
       await Promise.all(updatePromises);
-      toast({ title: "Sorteio Realizado!", description: "Os times foram definidos." });
+      toast({ title: "Sorteio Realizado!", description: "Os times foram definidos.", className: "bg-white text-black border-white" });
       setTeamList([]);
       setShowDrawPanel(false);
       fetchTeams();
@@ -210,7 +210,7 @@ const Teams = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ team_player: "Sem Time", squad: [], ovr: 75 }),
       });
-      toast({ title: "Sucesso", description: "Time excluido com sucesso." });
+      toast({ title: "Sucesso", description: "Time excluido com sucesso.", className: "bg-white text-black border-white" });
       fetchTeams();
     } catch (error) {
       toast({ title: "Erro", description: "Falha ao excluir Time.", variant: "destructive" });
@@ -409,10 +409,10 @@ const Teams = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-red-600 text-white hover:bg-red-700 hover:text-white border-0">
+            <AlertDialogCancel className="px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors">
               Não, cancelar
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmClearTeam} className="bg-white text-black hover:bg-gray-200">
+            <AlertDialogAction onClick={confirmClearTeam} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity">
               Sim, excluir
             </AlertDialogAction>
           </AlertDialogFooter>

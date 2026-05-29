@@ -16,6 +16,12 @@ interface CupHistoryData {
   classificacao_final: any[];
 }
 
+// Função utilitária para o cálculo da porcentagem de aproveitamento
+const getAproveitamento = (pts: number, matches: number) => {
+  if (!matches || matches === 0) return "0.0%";
+  return ((pts / (matches * 3)) * 100).toFixed(1) + "%";
+};
+
 const Cups = () => {
   const [cups, setCups] = useState<CupHistoryData[]>([]);
   const [allPlayersMaster, setAllPlayersMaster] = useState<any[]>([]); 
@@ -31,7 +37,7 @@ const Cups = () => {
   const [cupToDelete, setCupToDelete] = useState<{id: number, nome: string} | null>(null);
   const [playerToDelete, setPlayerToDelete] = useState<{id: number | string, nome: string} | null>(null);
 
-  // 👇 ESTADOS PARA A EDIÇÃO INLINE DO NOME DA COPA 👇
+  //  ESTADOS PARA A EDIÇÃO INLINE DO NOME DA COPA 
   const [editingCupId, setEditingCupId] = useState<number | null>(null);
   const [editCupName, setEditCupName] = useState("");
 
@@ -80,7 +86,7 @@ const Cups = () => {
     try {
       const response = await fetch(`${API_URL}/COPAS/IMPORTAR`, { method: "POST", body: formData });
       if (!response.ok) throw new Error("Erro na importação");
-      toast({ title: "Sucesso!", description: "Histórico importado com sucesso." });
+      toast({ title: "Sucesso!", description: "Histórico importado com sucesso.", className: "bg-white text-black border-white" });
       fetchCupsAndPlayers();
     } catch (error) {
       toast({ title: "Erro", description: "Verifique as colunas do seu Excel.", variant: "destructive" });
@@ -92,14 +98,14 @@ const Cups = () => {
 
   const handleExportGlobal = () => {
     window.open(`${API_URL}/COPAS/EXPORTAR`, "_blank");
-    toast({ title: "Download Iniciado", description: "Sua planilha geral está sendo baixada." });
+    toast({ title: "Download Iniciado", description: "Sua planilha geral está sendo baixada.", className: "bg-white text-black border-white" });
   };
 
   const confirmDeleteCup = async () => {
     if (!cupToDelete) return;
     try {
       await fetch(`${API_URL}/COPAS/${cupToDelete.id}`, { method: "DELETE" });
-      toast({ title: "Excluída", description: "Copa removida do histórico." });
+      toast({ title: "Excluída", description: "Copa removida do histórico.", className: "bg-white text-black border-white" });
       fetchCupsAndPlayers();
     } catch (error) {
       toast({ title: "Erro", description: "Falha ao excluir a copa.", variant: "destructive" });
@@ -112,7 +118,7 @@ const Cups = () => {
     try {
       const response = await fetch(`${API_URL}/TEAMS/REATIVAR/${id}`, { method: "PUT" });
       if (!response.ok) throw new Error();
-      toast({ title: "Reativado!", description: `${nome} voltou para a tela de Jogadores.` });
+      toast({ title: "Reativado!", description: `${nome} voltou para a tela de Jogadores.`, className: "bg-white text-black border-white" });
       fetchCupsAndPlayers(); 
     } catch (error) {
       toast({ title: "Erro", description: "Falha ao reativar o jogador.", variant: "destructive" });
@@ -124,7 +130,7 @@ const Cups = () => {
     try {
       const response = await fetch(`${API_URL}/TEAMS/${playerToDelete.id}`, { method: "DELETE" });
       if (!response.ok) throw new Error();
-      toast({ title: "Excluído", description: `${playerToDelete.nome} apagado permanentemente.` });
+      toast({ title: "Excluído", description: `${playerToDelete.nome} apagado permanentemente.`, className: "bg-white text-black border-white" });
       fetchCupsAndPlayers();
     } catch (error) {
       toast({ title: "Erro", description: "Falha ao excluir jogador.", variant: "destructive" });
@@ -133,7 +139,7 @@ const Cups = () => {
     }
   };
 
-  // 👇 FUNÇÃO PARA SALVAR A EDIÇÃO INLINE DO NOME DA COPA 👇
+  //  FUNÇÃO PARA SALVAR A EDIÇÃO INLINE DO NOME DA COPA 
   const handleSaveCupName = async (cupId: number) => {
     if (!editCupName.trim()) {
         setEditingCupId(null);
@@ -146,7 +152,7 @@ const Cups = () => {
             body: JSON.stringify({ nome_copa: editCupName })
         });
         if (response.ok) {
-            toast({ title: "Atualizado!", description: "Nome do campeonato alterado." });
+            toast({ title: "Atualizado!", description: "Nome do campeonato alterado.", className: "bg-white text-black border-white" });
             fetchCupsAndPlayers();
         } else {
             throw new Error();
@@ -158,20 +164,35 @@ const Cups = () => {
   };
 
   const handleExportSingleCup = (cup: CupHistoryData) => {
-    const sorted = [...(cup.classificacao_final || [])].sort((a, b) => b.points - a.points);
+    // Exportamos a tabela ordenada por pontos para manter o padrão lógico
+    const sorted = [...(cup.classificacao_final || [])].sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      const sgA = (a.goals_score || 0) - (a.goals_conceded || 0);
+      const sgB = (b.goals_score || 0) - (b.goals_conceded || 0);
+      return sgB - sgA;
+    });
 
-    const linhasExcel = sorted.map(s => ({
-      nome_copa: cup.nome_copa,
-      campeao: cup.campeao,
-      name_player: s.name_player,
-      team_player: s.team_player,
-      points: s.points || 0,
-      wins: s.wins || 0,
-      draws: s.draws || 0,
-      losses: s.losses || 0,
-      goals_score: s.goals_score || 0,
-      goals_conceded: s.goals_conceded || 0
-    }));
+    const linhasExcel = sorted.map(s => {
+      // Deduz a posição final do pódio para incluir no export
+      let podiumPos = Number(s.podio);
+      if (!podiumPos || isNaN(podiumPos)) {
+        podiumPos = (cup.classificacao_final?.findIndex(x => x.name_player === s.name_player) ?? 0) + 1;
+      }
+
+      return {
+        nome_copa: cup.nome_copa,
+        campeao: cup.campeao,
+        name_player: s.name_player,
+        team_player: s.team_player,
+        podio: podiumPos <= 3 ? podiumPos : "",
+        points: s.points || 0,
+        wins: s.wins || 0,
+        draws: s.draws || 0,
+        losses: s.losses || 0,
+        goals_score: s.goals_score || 0,
+        goals_conceded: s.goals_conceded || 0
+      }
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(linhasExcel);
     const workbook = XLSX.utils.book_new();
@@ -192,7 +213,6 @@ const Cups = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Trophy className="h-8 w-8 text-primary" />
-          <h1 className="page-header">Copas & Histórico</h1>
         </div>
         <div className="flex items-center gap-2">
           <input type="file" accept=".csv, .xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
@@ -201,7 +221,7 @@ const Cups = () => {
             Importar
           </button>
           <button onClick={handleExportGlobal} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-display font-semibold text-sm hover:opacity-90 transition-opacity neon-glow">
-            <Download className="h-4 w-4" /> Exportar Tudo
+            <Download className="h-4 w-4" /> Exportar
           </button>
         </div>
       </div>
@@ -214,7 +234,7 @@ const Cups = () => {
             <button onClick={() => setShowGeneral(!showGeneral)} className="w-full bg-muted/20 px-6 py-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
               <div className="flex items-center gap-3">
                 <Crown className="h-5 w-5 text-neon-yellow" />
-                <h3 className="font-display text-xl font-bold text-foreground">Classificação Geral de Todos os Tempos</h3>
+                <h3 className="font-display text-xl font-bold text-foreground">Classificação Geral</h3>
               </div>
               <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${showGeneral ? "rotate-180" : ""}`} />
             </button>
@@ -225,15 +245,16 @@ const Cups = () => {
                   <thead>
                     <tr className="border-b border-border/50 bg-background/50 text-muted-foreground text-xs uppercase tracking-wider">
                       <th className="text-left py-3 px-4">#</th>
-                      <th className="text-left py-3 px-2">Lenda (Jogador)</th>
-                      <th className="text-center py-3 px-2 text-neon-yellow" title="Títulos (1º Lugar)">🥇 1º</th>
-                      <th className="text-center py-3 px-2 text-gray-400" title="Vices (2º Lugar)">🥈 2º</th>
-                      <th className="text-center py-3 px-2 text-amber-600" title="Terceiros (3º Lugar)">🥉 3º</th>
+                      <th className="text-left py-3 px-2">Jogador</th>
+                      <th className="text-center py-3 px-2 text-neon-yellow" title="Títulos (1º Lugar)">1º</th>
+                      <th className="text-center py-3 px-2 text-gray-400" title="Vices (2º Lugar)">2º</th>
+                      <th className="text-center py-3 px-2 text-amber-600" title="Terceiros (3º Lugar)">3º</th>
                       <th className="text-center py-3 px-2 border-l border-border/30">J</th>
                       <th className="text-center py-3 px-2">V</th>
                       <th className="text-center py-3 px-2">E</th>
                       <th className="text-center py-3 px-2">D</th>
                       <th className="text-center py-3 px-2">SG</th>
+                      <th className="text-center py-3 px-2">%</th>
                       <th className="text-center py-3 px-4 text-primary font-bold">PTS</th>
                     </tr>
                   </thead>
@@ -252,14 +273,14 @@ const Cups = () => {
                           
                           <td className="py-3 px-2 flex items-center gap-3 group relative">
                             <div className="w-8 h-8 rounded-md flex items-center justify-center font-bold text-black shadow-sm shrink-0" style={{ backgroundColor: player.color || '#FFFFFF' }}>
-                              {player.name_player[0].toUpperCase()}
+                              {player.name_player[0]?.toUpperCase()}
                             </div>
                             <span className={`font-bold text-base whitespace-nowrap transition-colors ${isInativo ? 'text-muted-foreground' : 'text-foreground'}`}>
                               {player.name_player}
                             </span>
                             
                             {isInativo && (
-                              <div className="ml-2 flex items-center h-6">
+                              <div className="ml-2 flex items-center h-6 w-[130px]">
                                 <span className="group-hover:hidden text-[#FF003F] border border-[#FF003F]/50 bg-[#FF003F]/10 px-1.5 py-0.5 rounded shadow-[0_0_8px_rgba(255,0,63,0.4)] text-[9px] font-bold uppercase tracking-wider">
                                   INATIVO
                                 </span>
@@ -292,6 +313,7 @@ const Cups = () => {
                           <td className="text-center py-3 px-2 text-draw">{player.draws}</td>
                           <td className="text-center py-3 px-2 text-loss">{player.losses}</td>
                           <td className="text-center py-3 px-2 font-medium">{sg > 0 ? `+${sg}` : sg}</td>
+                          <td className="text-center py-3 px-2 font-bold text-xs text-muted-foreground">{getAproveitamento(player.points, player.matches_played)}</td>
                           <td className="text-center py-3 px-4 font-display text-lg font-bold text-primary bg-primary/5">{player.points}</td>
                         </tr>
                       )
@@ -304,13 +326,23 @@ const Cups = () => {
 
           <hr className="border-border/30" />
 
-          <h3 className="font-display text-xl font-bold text-muted-foreground">Edições Anteriores</h3>
+          <h3 className="font-display text-xl font-bold text-muted-foreground">Edições anteriores</h3>
 
           <div className="space-y-4">
             {cups.map((cup) => {
               const isExpanded = expandedCup === cup.id;
-              const standings = [...(cup.classificacao_final || [])].sort((a, b) => b.points - a.points);
-              const championTeam = standings.find(s => s.name_player === cup.campeao)?.team_player || "Desconhecido";
+              
+              // 1. Guardamos o array original do banco de dados (que reflete o pódio dos sistemas legados de mata-mata)
+              const originalStandings = cup.classificacao_final || [];
+              const championTeam = originalStandings[0]?.team_player || "Desconhecido";
+
+              // 2. Ordenamos a tabela de forma estritamente matemática (Pontos > Saldo)
+              const standings = [...originalStandings].sort((a, b) => {
+                if (b.points !== a.points) return b.points - a.points;
+                const sgA = (a.goals_score || 0) - (a.goals_conceded || 0);
+                const sgB = (b.goals_score || 0) - (b.goals_conceded || 0);
+                return sgB - sgA;
+              });
 
               return (
                 <div key={cup.id} className="card-elevated overflow-hidden border-border/50">
@@ -320,7 +352,7 @@ const Cups = () => {
                         <Trophy className="h-6 w-6 text-primary" />
                       </div>
                       
-                      {/* 👇 INLINE EDITING APLICADO AQUI 👇 */}
+                      {/*INLINE EDITING APLICADO AQUI */}
                       <div>
                         {editingCupId === cup.id ? (
                           <input
@@ -339,7 +371,7 @@ const Cups = () => {
                               <Edit2 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary" />
                           </div>
                         )}
-                        <p className="text-sm text-muted-foreground">Edição Finalizada</p>
+                        <p className="text-sm text-muted-foreground">Edição finalizada</p>
                       </div>
                     </div>
 
@@ -370,14 +402,16 @@ const Cups = () => {
                           <thead>
                             <tr className="border-b border-border/50 text-muted-foreground text-xs uppercase tracking-wider">
                               <th className="text-left py-3 px-4">#</th>
-                              <th className="text-left py-3 px-2">Jogador</th>
-                              <th className="text-left py-3 px-2">Time Base</th>
+                              <th className="text-left py-3 px-2 min-w-[250px]">Jogador</th>
+                              <th className="text-left py-3 px-2">Time</th>
+                              <th className="text-center py-3 px-2">J</th>
                               <th className="text-center py-3 px-2">V</th>
                               <th className="text-center py-3 px-2">E</th>
                               <th className="text-center py-3 px-2">D</th>
                               <th className="text-center py-3 px-2">GP</th>
                               <th className="text-center py-3 px-2">GC</th>
                               <th className="text-center py-3 px-2">SG</th>
+                              <th className="text-center py-3 px-2">%</th>
                               <th className="text-center py-3 px-4 text-primary font-bold">PTS</th>
                             </tr>
                           </thead>
@@ -388,41 +422,57 @@ const Cups = () => {
                               const dbPlayer = activeRecord || playerRecords[0];
                               const isInativo = dbPlayer?.team_player === 'INATIVO';
 
+                              const j = (s.wins || 0) + (s.draws || 0) + (s.losses || 0);
+                              
+                              // LÓGICA DO PÓDIO (INDEPENDENTE DA PONTUAÇÃO)
+                              let finalPosition = Number(s.podio);
+                              if (!finalPosition || isNaN(finalPosition)) {
+                                 finalPosition = originalStandings.findIndex(x => x.name_player === s.name_player) + 1;
+                              }
+                              
+                              let badge = null;
+                              if (finalPosition === 1) badge = <span className="bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 w-full"><Medal className="h-3 w-3 shrink-0" /> Campeão</span>;
+                              else if (finalPosition === 2) badge = <span className="bg-gray-400/20 text-gray-400 border border-gray-400/50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 w-full"><Medal className="h-3 w-3 shrink-0" /> Vice</span>;
+                              else if (finalPosition === 3) badge = <span className="bg-amber-700/20 text-amber-600 border border-amber-700/50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 w-full"><Medal className="h-3 w-3 shrink-0" /> 3º Lugar</span>;
+
                               return (
                                 <tr key={i} className={`border-b border-border/30 transition-colors hover:bg-secondary/50 ${i === 0 ? "bg-primary/5" : ""}`}>
                                   <td className="py-3 px-4 font-display font-bold text-muted-foreground">{i + 1}</td>
                                   
-                                  <td className="py-3 px-2 font-medium flex items-center gap-2 group relative">
-                                    <span className={`${isInativo ? 'text-muted-foreground' : 'text-foreground'}`}>
-                                      {s.name_player} 
-                                    </span>
-                                    {i === 0 && <Crown className="h-3 w-3 text-yellow-400 drop-shadow-md" />}
-                                    
-                                    {isInativo && (
-                                      <div className="ml-2 flex items-center h-6">
-                                        <span className="group-hover:hidden text-[#FF003F] border border-[#FF003F]/50 bg-[#FF003F]/10 px-1.5 py-0.5 rounded shadow-[0_0_8px_rgba(255,0,63,0.4)] text-[8px] font-bold uppercase tracking-wider">
-                                          INATIVO
+                                  {/* Célula Flex Reestruturada para Alinhamento Fixo sem os botões */}
+                                  <td className="py-3 px-2 group relative">
+                                    <div className="flex items-center min-w-[250px] w-full">
+                                      
+                                      {/* Info Jogador */}
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <div className="w-8 h-8 rounded-md flex items-center justify-center font-bold text-black shadow-sm shrink-0" style={{ backgroundColor: s.color || '#FFFFFF' }}>
+                                          {s.name_player?.[0]?.toUpperCase() || '?'}
+                                        </div>
+                                        <span className={`font-bold text-base whitespace-nowrap transition-colors ${isInativo ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                          {s.name_player} 
                                         </span>
-                                        {dbPlayer?.id && (
-                                          <div className="hidden group-hover:flex gap-1 animate-fade-in z-10">
-                                            <button onClick={(e) => { e.stopPropagation(); handleReactivate(dbPlayer.id, dbPlayer.name_player); }} className="bg-background/90 px-1.5 py-0.5 rounded border border-[#00BFFF] text-[#00BFFF] text-[8px] font-bold shadow-[0_0_8px_rgba(0,191,255,0.8)] hover:bg-[#00BFFF]/20 whitespace-nowrap">REATIVAR</button>
-                                            <button onClick={(e) => { e.stopPropagation(); setPlayerToDelete({ id: dbPlayer.id, nome: dbPlayer.name_player }); }} className="bg-background/90 px-1.5 py-0.5 rounded border border-[#FF003F] text-[#FF003F] text-[8px] font-bold shadow-[0_0_8px_rgba(255,0,63,0.8)] hover:bg-[#FF003F]/20 whitespace-nowrap">EXCLUIR</button>
-                                          </div>
-                                        )}
                                       </div>
-                                    )}
+
+                                      {/* Container do Badge */}
+                                      <div className="w-[100px] shrink-0 mx-4">
+                                        {badge}
+                                      </div>
+
+                                    </div>
                                   </td>
 
                                   <td className="py-3 px-2 text-muted-foreground">
                                     <div className="flex items-center gap-1"><Shield className="h-3 w-3" style={{ color: s.color || '#555' }} /> {s.team_player}</div>
                                   </td>
-                                  <td className="text-center py-3 px-2 text-win">{s.wins}</td>
-                                  <td className="text-center py-3 px-2 text-draw">{s.draws}</td>
-                                  <td className="text-center py-3 px-2 text-loss">{s.losses}</td>
-                                  <td className="text-center py-3 px-2 opacity-80">{s.goals_score}</td>
-                                  <td className="text-center py-3 px-2 opacity-80">{s.goals_conceded}</td>
-                                  <td className="text-center py-3 px-2 font-medium">{s.goals_score - s.goals_conceded > 0 ? "+" : ""}{s.goals_score - s.goals_conceded}</td>
-                                  <td className="text-center py-3 px-4 font-display text-lg font-bold text-primary">{s.points}</td>
+                                  <td className="text-center py-3 px-2 text-muted-foreground">{j}</td>
+                                  <td className="text-center py-3 px-2 text-win">{s.wins || 0}</td>
+                                  <td className="text-center py-3 px-2 text-draw">{s.draws || 0}</td>
+                                  <td className="text-center py-3 px-2 text-loss">{s.losses || 0}</td>
+                                  <td className="text-center py-3 px-2 opacity-80">{s.goals_score || 0}</td>
+                                  <td className="text-center py-3 px-2 opacity-80">{s.goals_conceded || 0}</td>
+                                  <td className="text-center py-3 px-2 font-medium">{(s.goals_score || 0) - (s.goals_conceded || 0) > 0 ? "+" : ""}{(s.goals_score || 0) - (s.goals_conceded || 0)}</td>
+                                  <td className="text-center py-3 px-2 font-bold text-xs text-muted-foreground">{getAproveitamento(s.points || 0, j)}</td>
+                                  <td className="text-center py-3 px-4 font-display text-lg font-bold text-primary">{s.points || 0}</td>
                                 </tr>
                               )
                             })}
@@ -439,14 +489,18 @@ const Cups = () => {
           <AlertDialog open={!!cupToDelete} onOpenChange={(open) => !open && setCupToDelete(null)}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Excluir Histórico?</AlertDialogTitle>
+                <AlertDialogTitle>Excluir histórico?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja APAGAR a <strong>{cupToDelete?.nome}</strong> do histórico? Isso não pode ser desfeito.
+                  Tem certeza que deseja apagar a <strong>{cupToDelete?.nome}</strong> do histórico? Isso não pode ser desfeito.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="bg-red-600 text-white hover:bg-red-700 hover:text-white border-0">Não, cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDeleteCup} className="bg-white text-black hover:bg-gray-200">Sim, excluir</AlertDialogAction>
+                <AlertDialogCancel className="px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors">
+                  Não, cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteCup} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity">
+                  Sim, excluir
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -454,14 +508,18 @@ const Cups = () => {
           <AlertDialog open={!!playerToDelete} onOpenChange={(open) => !open && setPlayerToDelete(null)}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Excluir em Definitivo?</AlertDialogTitle>
+                <AlertDialogTitle>Excluir?</AlertDialogTitle>
                 <AlertDialogDescription>
                   Tem certeza que deseja apagar <strong>{playerToDelete?.nome}</strong> permanentemente do banco de dados? Ele não poderá ser reativado no futuro (porém seus números antigos permanecerão como 'desconhecido' nas planilhas).
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="bg-transparent text-muted-foreground hover:bg-secondary">Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmHardDeletePlayer} className="bg-red-600 text-white hover:bg-red-700">Excluir Definitivamente</AlertDialogAction>
+                <AlertDialogCancel className="px-6 py-2 rounded-lg font-display font-bold text-sm bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors">
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={confirmHardDeletePlayer} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-display font-bold text-sm hover:opacity-90 transition-opacity">
+                  Excluir
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

@@ -141,7 +141,7 @@ export function TournamentBracket({ games, teams, config, liveScores }: Tourname
             <Zap className="h-5 w-5 animate-pulse" />
             <div className="flex flex-col">
               <span className="font-bold text-sm leading-tight">Projeção Dinâmica</span>
-              <span className="text-[10px] opacity-80 leading-tight">Árvore oficial gerada no início.</span>
+              <span className="text-[10px] opacity-80 leading-tight">Chaveamento projetado com base nos resultados atuais.</span>
             </div>
          </div>
       )}

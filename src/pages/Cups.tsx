@@ -37,7 +37,7 @@ const Cups = () => {
   const [cupToDelete, setCupToDelete] = useState<{id: number, nome: string} | null>(null);
   const [playerToDelete, setPlayerToDelete] = useState<{id: number | string, nome: string} | null>(null);
 
-  //  ESTADOS PARA A EDIÇÃO INLINE DO NOME DA COPA 
+  // ESTADOS PARA A EDIÇÃO INLINE DO NOME DA COPA 
   const [editingCupId, setEditingCupId] = useState<number | null>(null);
   const [editCupName, setEditCupName] = useState("");
 
@@ -139,7 +139,7 @@ const Cups = () => {
     }
   };
 
-  //  FUNÇÃO PARA SALVAR A EDIÇÃO INLINE DO NOME DA COPA 
+  // FUNÇÃO PARA SALVAR A EDIÇÃO INLINE DO NOME DA COPA 
   const handleSaveCupName = async (cupId: number) => {
     if (!editCupName.trim()) {
         setEditingCupId(null);
@@ -164,7 +164,6 @@ const Cups = () => {
   };
 
   const handleExportSingleCup = (cup: CupHistoryData) => {
-    // Exportamos a tabela ordenada por pontos para manter o padrão lógico
     const sorted = [...(cup.classificacao_final || [])].sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       const sgA = (a.goals_score || 0) - (a.goals_conceded || 0);
@@ -173,7 +172,6 @@ const Cups = () => {
     });
 
     const linhasExcel = sorted.map(s => {
-      // Deduz a posição final do pódio para incluir no export
       let podiumPos = Number(s.podio);
       if (!podiumPos || isNaN(podiumPos)) {
         podiumPos = (cup.classificacao_final?.findIndex(x => x.name_player === s.name_player) ?? 0) + 1;
@@ -275,12 +273,14 @@ const Cups = () => {
                             <div className="w-8 h-8 rounded-md flex items-center justify-center font-bold text-black shadow-sm shrink-0" style={{ backgroundColor: player.color || '#FFFFFF' }}>
                               {player.name_player[0]?.toUpperCase()}
                             </div>
-                            <span className={`font-bold text-base whitespace-nowrap transition-colors ${isInativo ? 'text-muted-foreground' : 'text-foreground'}`}>
+                            
+                            {/* NOME AGORA TEM LARGURA FIXA E TRUNCATE PARA ALINHAR O QUE VEM DEPOIS */}
+                            <span className={`font-bold text-base whitespace-nowrap w-[160px] overflow-hidden text-ellipsis transition-colors ${isInativo ? 'text-muted-foreground' : 'text-foreground'}`}>
                               {player.name_player}
                             </span>
                             
                             {isInativo && (
-                              <div className="ml-2 flex items-center h-6 w-[130px]">
+                              <div className="flex items-center h-6 w-[130px]">
                                 <span className="group-hover:hidden text-[#FF003F] border border-[#FF003F]/50 bg-[#FF003F]/10 px-1.5 py-0.5 rounded shadow-[0_0_8px_rgba(255,0,63,0.4)] text-[9px] font-bold uppercase tracking-wider">
                                   INATIVO
                                 </span>
@@ -332,11 +332,9 @@ const Cups = () => {
             {cups.map((cup) => {
               const isExpanded = expandedCup === cup.id;
               
-              // 1. Guardamos o array original do banco de dados (que reflete o pódio dos sistemas legados de mata-mata)
               const originalStandings = cup.classificacao_final || [];
               const championTeam = originalStandings[0]?.team_player || "Desconhecido";
 
-              // 2. Ordenamos a tabela de forma estritamente matemática (Pontos > Saldo)
               const standings = [...originalStandings].sort((a, b) => {
                 if (b.points !== a.points) return b.points - a.points;
                 const sgA = (a.goals_score || 0) - (a.goals_conceded || 0);
@@ -352,7 +350,6 @@ const Cups = () => {
                         <Trophy className="h-6 w-6 text-primary" />
                       </div>
                       
-                      {/*INLINE EDITING APLICADO AQUI */}
                       <div>
                         {editingCupId === cup.id ? (
                           <input
@@ -424,7 +421,6 @@ const Cups = () => {
 
                               const j = (s.wins || 0) + (s.draws || 0) + (s.losses || 0);
                               
-                              // LÓGICA DO PÓDIO (INDEPENDENTE DA PONTUAÇÃO)
                               let finalPosition = Number(s.podio);
                               if (!finalPosition || isNaN(finalPosition)) {
                                  finalPosition = originalStandings.findIndex(x => x.name_player === s.name_player) + 1;
@@ -439,11 +435,9 @@ const Cups = () => {
                                 <tr key={i} className={`border-b border-border/30 transition-colors hover:bg-secondary/50 ${i === 0 ? "bg-primary/5" : ""}`}>
                                   <td className="py-3 px-4 font-display font-bold text-muted-foreground">{i + 1}</td>
                                   
-                                  {/* Célula Flex Reestruturada para Alinhamento Fixo sem os botões */}
                                   <td className="py-3 px-2 group relative">
                                     <div className="flex items-center min-w-[250px] w-full">
                                       
-                                      {/* Info Jogador */}
                                       <div className="flex items-center gap-3 flex-1">
                                         <div className="w-8 h-8 rounded-md flex items-center justify-center font-bold text-black shadow-sm shrink-0" style={{ backgroundColor: s.color || '#FFFFFF' }}>
                                           {s.name_player?.[0]?.toUpperCase() || '?'}
@@ -453,7 +447,6 @@ const Cups = () => {
                                         </span>
                                       </div>
 
-                                      {/* Container do Badge */}
                                       <div className="w-[100px] shrink-0 mx-4">
                                         {badge}
                                       </div>

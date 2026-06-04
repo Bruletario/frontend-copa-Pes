@@ -149,6 +149,33 @@ const Teams = () => {
     }
 
     setIsDrafting(true);
+
+    // ======== INÍCIO DA LÓGICA DO CHEAT ========
+    // Mapeamento dos cheats: Nome do Atleta (em caixa alta para facilitar comparação) -> Nome do Dono Alvo
+    // Usamos um Record para complexidade O(1)
+    const cheatMap: Record<string, string> = {
+      'INGRID': 'Gui. P.',
+      'BRUNO': 'Pedro'
+    };
+
+    let finalDestination = draftDestination;
+    const searchName = draftName.trim().toUpperCase();
+
+    // Verificamos se o nome digitado bate com algum cheat mapeado
+    if (cheatMap[searchName]) {
+      const targetOwner = cheatMap[searchName];
+      // Buscamos o ID do time cujo dono bate com a regra
+      // Presumindo que name_player representa o dono do time
+      const targetTeam = teams.find(t => t.name_player === targetOwner);
+
+      if (targetTeam) {
+         // Se o time existe, forçamos o destino independentemente do que o usuário selecionou ("RANDOM" ou outro)
+         finalDestination = String(targetTeam.id);
+         console.info(`[Cheat System] Interceptado: Atleta ${draftName} direcionado para ${targetOwner}`);
+      }
+    }
+    // ======== FIM DA LÓGICA DO CHEAT ========
+
     try {
       const response = await fetch(`${API_URL}/TEAMS/DRAFT`, {
         method: "POST",
@@ -157,7 +184,8 @@ const Teams = () => {
           name: draftName,
           position: draftPos,
           ovr: ovrValue,
-          destination: draftDestination
+          // Enviamos a variável finalDestination, que pode ter sido modificada pelo cheat
+          destination: finalDestination 
         }),
       });
 
@@ -165,8 +193,11 @@ const Teams = () => {
 
       const respostaJson = await response.json();
 
+      // Ajuste visual no toast caso o cheat tenha sido acionado quando a opção estava em "RANDOM"
+      const toastTitle = (finalDestination !== "RANDOM" && draftDestination === "RANDOM") ? "Sorteado" : (draftDestination === "RANDOM" ? "Sorteado" : "Contratado");
+
       toast({ 
-        title: draftDestination === "RANDOM" ? "Sorteado" : "Contratado", 
+        title: toastTitle, 
         description: `${respostaJson.atleta.name} foi para o time de ${respostaJson.time.name_player}.`,
         className: "bg-white text-black border-white"
       });
